@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Access Audit History — MedExplain{% endblock %}
+{% block content %}
+
+<div class="glass-container p-4 p-md-5 mx-auto"
+     style="max-width:1200px;">
+
+  {% if flash %}
+  <div class="alert alert-info alert-dismissible fade show text-center fw-semibold mb-3">
+    {{ flash }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endif %}
+
+  <h3 class="text-center fw-bold mb-2"
+      style="color:var(--med-primary); letter-spacing:.5px;">
+      Access & Role Audit History
+  </h3>
+
+  <p class="text-center text-muted mb-4" style="font-size:.9rem;">
+    This log records all role changes to ensure accountability,
+    transparency, and ethical governance within MedExplain.
+  </p>
+
+  <div class="table-responsive">
+    <table class="table align-middle text-center table-borderless"
+           style="color:var(--med-primary); white-space:nowrap;">
+
+      <thead class="table-header">
+        <tr>
+          <th>User</th>
+          <th>Changed By</th>
+          <th>Previous Role</th>
+          <th>New Role</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+
+      <tbody class="history-body">
+        {% for r in history %}
+        <tr class="history-card">
+          <td class="fw-semibold">{{ r.target_user }}</td>
+
+          <td>
+            <span class="badge badge-neutral">
+              {{ r.changed_by }}
+            </span>
+          </td>
+
+          <td>
+            <span class="badge badge-role-old">
+              {{ r.old_role }}
+            </span>
+          </td>
+
+          <td>
+            <span class="badge badge-role-new">
+              {{ r.new_role }}
+            </span>
+          </td>
+
+          <td>
+            <small>{{ r.timestamp }}</small>
+          </td>
+        </tr>
+        {% endfor %}
+
+        {% if not history %}
+        <tr>
+          <td colspan="5" class="text-muted py-3">
+            No role changes have been recorded yet.
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+
+    </table>
+  </div>
+</div>
+
+<!-- ================= STYLES ================= -->
+<style>
+/* 🧊 Unified Glass Wrapper */
+.glass-container {
+  width: 100%;
+  max-width: 1150px;
+  margin: auto;
+
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  border-radius: 22px;
+  border: 1px solid rgba(30,58,95,0.18);
+
+  padding: 25px 30px;
+  box-shadow: 0 18px 48px rgba(30,58,95,0.18);
+  transition: .25s ease;
+}
+
+.glass-container:hover {
+  box-shadow: 0 24px 60px rgba(30,58,95,0.25);
+}
+
+/* Table Layout */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 14px;
+}
+
+/* Header */
+.table-header th {
+  background: transparent !important;
+  color: var(--med-primary);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 14px 6px;
+  border-bottom: 2px solid rgba(30,58,95,0.20);
+  letter-spacing: .5px;
+}
+
+/* Row Cards */
+.history-card {
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(30,58,95,0.15);
+  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.history-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 36px rgba(30,58,95,0.25);
+}
+
+/* Cells */
+td {
+  padding: 16px 10px;
+  font-size: 14px;
+  color: var(--med-primary);
+  font-weight: 500;
+}
+
+/* Badges */
+.badge {
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.badge-neutral {
+  background: rgba(37,99,235,0.18);
+  color: var(--med-primary);
+}
+
+.badge-role-old {
+  background: rgba(248,113,113,0.35); /* soft red */
+  color: var(--med-primary);
+}
+
+.badge-role-new {
+  background: rgba(34,197,94,0.35); /* soft green */
+  color: var(--med-primary);
+}
+
+/* Responsive */
+@media(max-width: 767px){
+  td, th {
+    font-size: 12px;
+    padding: 8px;
+  }
+}
+</style>
+
+{% endblock %}

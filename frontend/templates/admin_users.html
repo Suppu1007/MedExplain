@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}User & Access Management — MedExplain{% endblock %}
+{% block content %}
+
+<div class="glass-container mt-4 p-4">
+  <div class="content-card text-center mx-auto" style="max-width:950px; padding:35px 25px;">
+    <h2 class="fw-bold" style="color:var(--med-primary);">
+      User & Access Management
+    </h2>
+    <p class="text-muted">
+      Manage platform users, roles, and system access permissions
+    </p>
+  </div>
+
+  {% if flash %}
+  <div class="alert alert-info alert-dismissible fade show text-center fw-semibold">
+      {{ flash }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table align-middle text-center table-borderless">
+
+      <thead class="table-header">
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Update Role</th>
+          <th>Administrative Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+      {% for user in users %}
+        <tr class="user-row">
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+
+          <td>
+            <span class="badge role-badge">
+              {{ user.role }}
+            </span>
+          </td>
+
+          <td>
+            {% if user.status == "Active" %}
+              <span class="badge success-soft">Active</span>
+            {% elif user.status == "Pending" %}
+              <span class="badge info-soft">Pending Review</span>
+            {% else %}
+              <span class="badge danger-soft">{{ user.status }}</span>
+            {% endif %}
+          </td>
+
+          <!-- Role Update -->
+          <td>
+            <form method="POST" action="/admin/users/update-role"
+                  class="d-flex justify-content-center gap-2">
+              <input type="hidden" name="user_email_target" value="{{ user.email }}">
+              <select name="new_role"
+                      class="form-select form-select-sm role-select"
+                      required>
+                <option value="User"
+                        {% if user.role == "User" %}selected{% endif %}>
+                  User
+                </option>
+                <option value="Admin"
+                        {% if user.role == "Admin" %}selected{% endif %}>
+                  Administrator
+                </option>
+              </select>
+              <button class="btn btn-sm btn-update">
+                Save
+              </button>
+            </form>
+          </td>
+
+          <!-- Administrative Actions -->
+          <td class="d-flex justify-content-center gap-2">
+
+            {% if user.status != "Active" %}
+            <form method="POST" action="/admin/users/update-status">
+              <input type="hidden" name="email" value="{{ user.email }}">
+              <input type="hidden" name="status" value="Active">
+              <button class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                Approve
+              </button>
+            </form>
+            {% endif %}
+
+            {% if user.status != "Disabled" %}
+            <form method="POST" action="/admin/users/update-status">
+              <input type="hidden" name="email" value="{{ user.email }}">
+              <input type="hidden" name="status" value="Disabled">
+              <button class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                Disable
+              </button>
+            </form>
+            {% endif %}
+
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.glass-container {
+  width: 100%;
+  max-width: 1150px;
+  margin: auto;
+  background: rgba(255,255,255,0.50);
+  backdrop-filter: blur(18px);
+  border-radius: 22px;
+  border: 1px solid rgba(40,90,120,0.20);
+  box-shadow: 0 18px 48px rgba(40,90,120,0.20);
+  padding: 25px;
+}
+
+.table-header th {
+  color: var(--med-primary);
+  font-size: 14px;
+  font-weight: 900;
+  border-bottom: 2px solid rgba(40,90,120,0.20);
+  padding: 12px 6px;
+}
+
+.user-row {
+  background: rgba(255,255,255,0.65);
+  border: 1px solid rgba(40,90,120,0.15);
+  border-radius: 16px;
+  transition: .25s ease;
+}
+
+.user-row:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(40,90,120,0.25);
+}
+
+.role-badge {
+  background: rgba(40,90,120,0.20);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.success-soft { background: rgba(76,217,100,0.30); color: var(--med-primary); }
+.danger-soft { background: rgba(255,107,107,0.35); color: var(--med-primary); }
+.info-soft { background: rgba(100,181,246,0.35); color: var(--med-primary); }
+
+.role-select {
+  min-width: 110px;
+  border: 1px solid rgba(40,90,120,0.40);
+  padding: 6px;
+  font-size: 13px;
+  border-radius: 12px;
+}
+
+.btn-update {
+  background: var(--med-primary);
+  color: #fff !important;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 12px;
+}
+
+.btn-outline-primary,
+.btn-outline-danger {
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  border-width: 2px;
+}
+
+.btn-outline-primary:hover {
+  background: var(--med-primary);
+  color: #fff !important;
+}
+
+.btn-outline-danger:hover {
+  background: #b32639;
+  color: #fff !important;
+}
+</style>
+
+{% endblock %}

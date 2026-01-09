@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}AI Assistant — MedExplain{% endblock %}
+
+{% block content %}
+
+<div class="assistant-page">
+
+  <!-- ================= HEADER ================= -->
+  <div class="assistant-top">
+    <div>
+      <h5 class="fw-bold mb-0">MediExplain AI</h5>
+      <small class="text-muted">Educational medical assistant • Not diagnostic</small>
+    </div>
+    <button class="btn btn-sm btn-outline-primary" onclick="newChat()">
+      New Chat
+    </button>
+  </div>
+
+  <!-- Disclaimer -->
+  <div class="alert alert-warning small text-center mx-3 my-2">
+    ⚠ This assistant provides educational information only and does not replace a healthcare professional.
+  </div>
+
+  <!-- Emergency banner -->
+  <div id="emergencyBanner"
+       class="alert alert-danger fw-semibold text-center mx-3"
+       style="display:none;">
+    🚨 Emergency detected. Please seek immediate medical attention.
+  </div>
+
+  <!-- ================= CHAT ================= -->
+  <div class="assistant-chat" id="chatBox">
+
+    <div class="message assistant">
+      <div class="bubble">
+        👋 Hello! I’m <b>MediExplain AI</b>.<br>
+        Ask about symptoms, lab results, or medical concepts.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= INPUT ================= -->
+  <div class="assistant-input">
+    <textarea id="message"
+              rows="1"
+              placeholder="Type your medical question…"
+              onkeydown="handleEnter(event)"></textarea>
+    <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+  </div>
+
+</div>
+
+<!-- ================= STYLES ================= -->
+<style>
+/* ===== PAGE ===== */
+.assistant-page {
+  max-width: 900px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+}
+
+/* ===== HEADER ===== */
+.assistant-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+}
+
+/* ===== CHAT ===== */
+.assistant-chat {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 75%;
+  padding: 14px 18px;
+  border-radius: 18px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.user .bubble {
+  background: var(--med-primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.assistant .bubble {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(40,90,120,0.18);
+  border-bottom-left-radius: 4px;
+}
+
+/* ===== INPUT ===== */
+.assistant-input {
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid rgba(40,90,120,0.18);
+}
+
+.assistant-input textarea {
+  flex: 1;
+  resize: none;
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(40,90,120,0.25);
+}
+
+/* ===== TYPING ===== */
+.typing {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+  .assistant-page {
+    height: calc(100vh - 90px);
+  }
+}
+</style>
+
+<!-- ================= SCRIPT ================= -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const chatBox = document.getElementById("chatBox");
+  const input = document.getElementById("message");
+  const emergencyBanner = document.getElementById("emergencyBanner");
+  const sendBtn = document.querySelector(".assistant-input button");
+
+  function append(role, text) {
+    const msg = document.createElement("div");
+    msg.className = `message ${role}`;
+    msg.innerHTML = `<div class="bubble">${text}</div>`;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function showTyping() {
+    const el = document.createElement("div");
+    el.id = "typing";
+    el.className = "message assistant";
+    el.innerHTML = `<div class="bubble">Thinking…</div>`;
+    chatBox.appendChild(el);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    append("user", text);
+    input.value = "";
+    showTyping();
+
+    try {
+      const res = await fetch("/api/assistant/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+      });
+
+      document.getElementById("typing")?.remove();
+
+      if (!res.ok) {
+        append("assistant", "⚠ Unable to process your request.");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.emergency) {
+        emergencyBanner.style.display = "block";
+      }
+
+      append("assistant", data.reply);
+
+    } catch (err) {
+      document.getElementById("typing")?.remove();
+      append("assistant", "⚠ Network error. Please try again.");
+      console.error(err);
+    }
+  }
+
+  function newChat() {
+    chatBox.innerHTML = "";
+    emergencyBanner.style.display = "none";
+    append("assistant",
+      "👋 New session started. How can I help you today?");
+  }
+
+  // ✅ Button click
+  sendBtn.addEventListener("click", sendMessage);
+
+  // ✅ Enter to send (Shift+Enter for newline)
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Expose for header button
+  window.newChat = newChat;
+
+});
+</script>
+
+
+{% endblock %}

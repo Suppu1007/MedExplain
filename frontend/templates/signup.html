@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up | MedExplain</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- External CSS -->
+<link rel="stylesheet" href="/static/css/signup.css">
+</head>
+
+<body>
+
+<div class="container-card">
+  <div class="navbar">MedExplain</div>
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <h1>Join MedExplain ✨</h1>
+    <p>
+      Access explainable medical AI tools designed to support
+      learning, analysis, and informed decision-making.
+    </p>
+    <p class="text-muted small mt-2">
+      This platform provides decision support only and does not replace
+      professional medical advice.
+    </p>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="signup-box">
+
+      <div class="signup-title">Create Account</div>
+
+      {% if flash %}
+      <div class="alert alert-warning py-2">{{ flash }}</div>
+      {% endif %}
+
+      <form method="POST" action="/signup">
+
+        <input type="text"
+               name="fullname"
+               class="form-control mb-3"
+               placeholder="Full Name"
+               required>
+
+        <input type="email"
+               name="email"
+               class="form-control mb-3"
+               placeholder="Email Address"
+               required>
+
+        <!-- PASSWORD -->
+        <div class="password-wrapper mb-3">
+          <input type="password"
+                 id="password"
+                 name="password"
+                 class="form-control"
+                 placeholder="Password"
+                 required>
+          <span class="material-icons-round icon-info"
+                data-bs-toggle="tooltip"
+                title="Must start with a capital letter, be at least 7 characters long, and include one special character (@,#,$,%)">
+            info
+          </span>
+          <span class="material-icons-round icon-pass"
+                onclick="togglePass('password', this)">
+            visibility
+          </span>
+        </div>
+
+        <!-- CONFIRM PASSWORD -->
+        <div class="password-wrapper mb-3">
+          <input type="password"
+                 id="confirm"
+                 name="confirm_password"
+                 class="form-control"
+                 placeholder="Confirm Password"
+                 required>
+          <span class="material-icons-round icon-pass"
+                onclick="togglePass('confirm', this)">
+            visibility
+          </span>
+        </div>
+
+        <!-- CAPTCHA -->
+        <div class="g-recaptcha mb-3"
+             data-sitekey="{{ recaptcha_site_key }}"
+             data-callback="onCaptchaSuccess">
+        </div>
+
+        <button class="btn-signup"
+                id="signupBtn"
+                disabled>
+          Sign Up
+        </button>
+
+      </form>
+
+      <div class="login-link">
+        Already have an account?
+        <a href="/login">Login</a>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer">
+    © 2025 MedExplain • Explainable Medical AI
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+<!-- External JavaScript -->
+<script src="/static/js/signup.js"></script>
+
+</body>
+</html>

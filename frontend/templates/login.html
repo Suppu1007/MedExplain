@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login | MedExplain</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+:root {
+  --bg-soft: #eef5f9;
+  --card-bg: #ffffff;
+  --text-dark: #1e3a5f;
+  --text-light: #64748b;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: var(--bg-soft);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.container-card {
+  display: flex;
+  width: 90%;
+  max-width: 1400px;
+  height: 82vh;
+  background: var(--card-bg);
+  border-radius: 42px;
+  overflow: hidden;
+  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.14);
+  position: relative;
+}
+
+.navbar {
+  position: absolute;
+  top: 28px;
+  left: 45px;
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--text-dark);
+}
+
+.left-panel {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 70px;
+  animation: fadeUp .9s ease-out forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.left-panel h1 {
+  font-size: 3.3rem;
+  font-weight: 900;
+  color: var(--text-dark);
+}
+
+.left-panel p {
+  font-size: 1.1rem;
+  color: var(--text-light);
+  margin-top: 12px;
+}
+
+.right-panel {
+  width: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.right-panel::before {
+  content: "";
+  position: absolute;
+  right: -20%;
+  top: 50%;
+  width: 135%;
+  height: 150%;
+  background: var(--bg-soft);
+  border-radius: 50% 0 0 50%;
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.login-box {
+  width: 90%;
+  max-width: 420px;
+  background: var(--card-bg);
+  padding: 45px;
+  border-radius: 22px;
+  box-shadow: 0 15px 45px rgba(0,0,0,0.12);
+  z-index: 2;
+  text-align: center;
+}
+
+.login-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 22px;
+}
+
+.form-control {
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-login {
+  background: var(--text-dark);
+  color: #fff;
+  width: 100%;
+  padding: 12px;
+  border-radius: 50px;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: .3s;
+}
+
+.btn-login:hover {
+  background: #162b44;
+  transform: translateY(-3px);
+}
+
+.helper-links {
+  margin-top: 10px;
+  font-size: .9rem;
+  text-align: center;
+}
+
+.helper-links a {
+  text-decoration: none;
+  color: var(--text-dark);
+}
+
+.helper-links a:hover {
+  text-decoration: underline;
+}
+
+.signup-link {
+  margin-top: 14px;
+  font-size: .9rem;
+}
+
+.footer {
+  position: absolute;
+  bottom: 22px;
+  left: 45px;
+  font-size: .85rem;
+  color: var(--text-light);
+}
+
+.toast-container {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+}
+
+@media(max-width:992px) {
+  .container-card { flex-direction: column; height: auto; padding-bottom: 45px; }
+  .left-panel, .right-panel { width: 100%; text-align: center; padding: 45px 25px; }
+  .right-panel::before { width: 100%; right: 0; height: 100%; border-radius: 45% 45% 0 0; }
+  .footer { position: static; margin-top: 20px; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ================= FLASH TOAST ================= -->
+<div class="toast-container">
+  <div id="flashToast" class="toast text-bg-danger border-0">
+    <div class="toast-body" id="flashMessage"></div>
+  </div>
+</div>
+
+<div class="container-card">
+
+  <div class="navbar">MedExplain</div>
+
+  <div class="left-panel">
+    <h1>Welcome Back 🦋</h1>
+    <p>
+      Secure access to explainable medical AI insights and
+      clinical decision-support tools.
+    </p>
+  </div>
+
+  <div class="right-panel">
+    <div class="login-box">
+
+      <div class="login-title">Sign In</div>
+
+      <form method="POST" action="/login">
+        <input type="email"
+               name="email"
+               class="form-control mb-3"
+               placeholder="Email address"
+               required>
+
+        <input type="password"
+               name="password"
+               class="form-control mb-3"
+               placeholder="Password"
+               required>
+
+        <button class="btn-login">Login</button>
+      </form>
+
+      <div class="helper-links">
+        <a href="/forgot-password">Forgot password?</a>
+      </div>
+
+      <div class="signup-link">
+        Don’t have an account?
+        <a href="/signup">Create one</a>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer">
+    © 2025 MedExplain • Explainable Medical AI
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const cookie = document.cookie.split("; ").find(r => r.startsWith("flash="));
+  if (cookie) {
+    const msg = decodeURIComponent(cookie.split("=")[1]);
+    flashToast(msg);
+    document.cookie = "flash=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+  }
+});
+
+function flashToast(message) {
+  document.getElementById("flashMessage").textContent = message;
+  new bootstrap.Toast(document.getElementById("flashToast")).show();
+}
+</script>
+
+</body>
+</html>
