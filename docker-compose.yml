@@ -1,0 +1,41 @@
+services:
+
+  # =========================
+  # OLLAMA LLM SERVICE
+  # =========================
+  ollama:
+    image: ollama/ollama:0.12.3
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+
+  # =========================
+  # FASTAPI APPLICATION
+  # =========================
+  app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: app
+    env_file:
+      - .env
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: llama3.2:1b
+    ports:
+      - "8009:8009"
+    depends_on:
+      - ollama
+    volumes:
+      - ./app/data:/app/data
+    restart: unless-stopped
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8009
+
+
+volumes:
+  ollama_data:
