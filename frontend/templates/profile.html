@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Profile — MedExplain{% endblock %}
+{% block content %}
+
+<!-- ================= PROFILE CARD ================= -->
+<div class="glass-container p-4 p-md-5 mx-auto fade-in-up"
+     style="max-width:760px; margin-top:40px; margin-bottom:40px;">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <span class="material-icons"
+          style="font-size:56px;color:var(--med-primary);">
+      account_circle
+    </span>
+    <div>
+      <h4 class="fw-bold mb-0" style="color:var(--med-primary);">
+        {{ user.name }}
+      </h4>
+      <small class="text-muted">{{ user.email }}</small>
+    </div>
+  </div>
+
+  {% if flash %}
+  <div class="alert alert-info text-center fw-semibold rounded-3 mb-3 fade-in-up">
+    {{ flash }}
+  </div>
+  {% endif %}
+
+  <!-- ================= PROFILE FORM ================= -->
+  <form method="POST" class="row g-4">
+
+    <!-- Full Name -->
+    <div class="col-12">
+      <label class="form-label fw-semibold">
+        <span class="material-icons fs-6 me-1 align-middle">badge</span>
+        Full Name
+      </label>
+      <input
+        name="fullname"
+        value="{{ user.name }}"
+        class="form-control input-custom"
+        required
+      >
+    </div>
+
+    <!-- Email (Read-only) -->
+    <div class="col-12">
+      <label class="form-label fw-semibold">
+        <span class="material-icons fs-6 me-1 align-middle">mail</span>
+        Email Address
+      </label>
+      <input
+        value="{{ user.email }}"
+        class="form-control input-custom"
+        disabled
+      >
+    </div>
+
+    <!-- Role (Read-only) -->
+    <div class="col-12">
+      <label class="form-label fw-semibold">
+        <span class="material-icons fs-6 me-1 align-middle">verified_user</span>
+        Access Role
+      </label>
+      <input
+        value="{{ user.role }}"
+        class="form-control input-custom"
+        disabled
+      >
+    </div>
+
+    <!-- Password Change -->
+    <div class="col-12">
+      <label class="form-label fw-semibold">
+        <span class="material-icons fs-6 me-1 align-middle">lock_reset</span>
+        New Password <small class="text-muted">(optional)</small>
+      </label>
+      <input
+        name="new_password"
+        type="password"
+        class="form-control input-custom"
+        placeholder="Leave blank to keep current password"
+      >
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="col-12">
+      <div class="alert alert-warning small mb-0">
+        🔐 For security reasons, password updates follow strict validation rules.
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="col-12 mt-2">
+      <button class="submit-btn w-100 py-3 fw-bold rounded-3">
+        Update Profile
+      </button>
+    </div>
+
+  </form>
+
+</div>
+
+<!-- ================= STYLES ================= -->
+<style>
+.glass-container {
+  background: rgba(255,255,255,0.55);
+  border-radius: 20px;
+  border: 1px solid rgba(30,58,95,0.18);
+  box-shadow: 0 18px 45px rgba(30,58,95,0.18);
+  backdrop-filter: blur(12px);
+}
+
+/* Inputs */
+.input-custom {
+  padding: 14px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(30,58,95,0.25);
+  border-radius: 12px;
+}
+.input-custom:focus {
+  border-color: var(--med-primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+}
+
+/* Button */
+.submit-btn {
+  background: var(--med-primary);
+  color: #fff;
+  transition: .25s ease;
+  border: none;
+}
+.submit-btn:hover {
+  background: #1e40af;
+  transform: translateY(-2px);
+}
+
+/* Animation */
+.fade-in-up {
+  animation: fadeSlide .45s ease-out;
+}
+@keyframes fadeSlide {
+  from { opacity:0; transform:translateY(15px); }
+  to { opacity:1; transform:translateY(0); }
+}
+</style>
+
+{% endblock %}

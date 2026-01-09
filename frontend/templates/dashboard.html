@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — MedExplain{% endblock %}
+{% block content %}
+
+<div class="dashboard-wrapper">
+
+  <!-- ================= HEADER ================= -->
+  <h2 class="fw-bold text-center mb-2" style="color:var(--med-primary);">
+    Medical Dashboard
+  </h2>
+  <p class="text-center mb-4 text-muted">
+    Explainable AI insights • Clinical decision support (non-diagnostic)
+  </p>
+
+  <!-- ================= ADMIN VIEW ================= -->
+  {% if is_admin %}
+  <div class="row g-4 justify-content-center" style="max-width:1200px; margin:auto;">
+
+    <div class="col-md-3 col-10">
+      <div class="content-card text-center py-4 kpi-box">
+        <span class="material-icons fs-1">description</span>
+        <h6 class="mt-2">Total Reports</h6>
+        <h2 class="fw-bold">{{ total_reports }}</h2>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-10">
+      <div class="content-card text-center py-4 kpi-box">
+        <span class="material-icons fs-1">analytics</span>
+        <h6 class="mt-2">Reports Analyzed</h6>
+        <h2 class="fw-bold">{{ analyzed_reports }}</h2>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-10">
+      <div class="content-card text-center py-4 kpi-box">
+        <span class="material-icons fs-1">groups</span>
+        <h6 class="mt-2">Active Users</h6>
+        <h2 class="fw-bold">{{ active_users }}</h2>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-10">
+      <div class="content-card text-center py-4 kpi-box">
+        <span class="material-icons fs-1">smart_toy</span>
+        <h6 class="mt-2">AI Interactions</h6>
+        <h2 class="fw-bold">{{ assistant_queries }}</h2>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= RECENT SYSTEM ACTIVITY ================= -->
+  <div class="content-card glass-table mt-5 p-4"
+       style="max-width:1100px; margin:auto;">
+    <h5 class="fw-bold mb-3">Recent System Activity</h5>
+
+    {% if recent_activity %}
+      <ul class="activity-list">
+        {% for a in recent_activity %}
+          <li>
+            <strong>{{ a.type }}</strong> —
+            {{ a.description }}
+            <small class="text-muted">
+              ({{ a.timestamp.strftime("%Y-%m-%d %H:%M") }})
+            </small>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No recent system activity.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ================= USER VIEW ================= -->
+  {% if not is_admin %}
+  <div class="row g-4 justify-content-center"
+       style="max-width:1000px; margin:auto;">
+
+    <div class="col-md-4 col-10">
+      <div class="content-card text-center py-4 kpi-box">
+        <span class="material-icons fs-1">description</span>
+        <h6 class="mt-2">Your Reports</h6>
+        <h2 class="fw-bold">{{ my_reports_count }}</h2>
+      </div>
+    </div>
+
+    <div class="col-md-4 col-10">
+      <div class="content-card text-center py-4 kpi-box">
+        <span class="material-icons fs-1">analytics</span>
+        <h6 class="mt-2">Analyzed</h6>
+        <h2 class="fw-bold">{{ my_analyzed_reports }}</h2>
+      </div>
+    </div>
+
+    <div class="col-md-4 col-10">
+      <div class="content-card text-center py-4 kpi-box">
+        <span class="material-icons fs-1">pending_actions</span>
+        <h6 class="mt-2">Pending</h6>
+        <h2 class="fw-bold">{{ my_pending_reports }}</h2>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= USER REPORTS ================= -->
+  <div class="content-card glass-table mt-5 p-4"
+       style="max-width:1100px; margin:auto;">
+    <h5 class="fw-bold mb-3">Your Medical Reports</h5>
+
+    {% if my_reports %}
+    <div class="table-responsive">
+      <table class="table align-middle table-hover">
+        <thead class="glass-header">
+          <tr>
+            <th>Report ID</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Uploaded</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in my_reports %}
+          <tr>
+            <td><strong>{{ r.report_id }}</strong></td>
+            <td>{{ r.report_type }}</td>
+            <td>
+              <span class="badge bg-info text-dark">
+                {{ r.status }}
+              </span>
+            </td>
+            <td>
+              {{ r.created_at.strftime("%Y-%m-%d") }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="text-muted">You have not uploaded any reports yet.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ================= STYLES ================= -->
+<style>
+.dashboard-wrapper {
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.activity-list li {
+  margin-bottom: 6px;
+}
+
+.glass-table {
+  background: rgba(255,255,255,0.55);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border:1px solid rgba(40,90,120,0.18);
+}
+
+.glass-header {
+  background: var(--med-primary);
+  color: #fff;
+}
+
+.kpi-box {
+  transition: .25s ease;
+}
+.kpi-box:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.12);
+}
+</style>
+
+{% endblock %}

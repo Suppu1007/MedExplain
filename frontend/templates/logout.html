@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logout | MedExplain</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #eef5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .logout-card {
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 26px;
+      box-shadow: 0 18px 65px rgba(30, 58, 95, 0.25);
+      width: 460px;
+      text-align: center;
+    }
+  </style>
+
+</head>
+<body>
+
+<div class="logout-card">
+
+  {% if flash %}
+    <div id="flash" class="alert alert-success fw-semibold">
+      {{ flash }}
+    </div>
+    <script>
+      setTimeout(() => {
+        const el = document.getElementById("flash");
+        if (el) el.style.display = "none";
+      }, 3000);
+    </script>
+  {% endif %}
+
+  <h2 class="fw-bold text-primary mt-2">You’ve Been Logged Out</h2>
+
+  <p class="text-muted mt-2">
+    For your security, your session has ended.
+  </p>
+
+  <p class="text-muted">
+    Redirecting to login in <strong><span id="timer">5</span></strong> seconds…
+  </p>
+
+  <a href="/" class="btn btn-primary w-100 mt-3 py-2 fw-bold">
+    Go to Login
+  </a>
+
+  <p class="text-muted mt-3" style="font-size: 0.85rem;">
+    MedExplain • Explainable Medical AI • Secure Access
+  </p>
+
+</div>
+
+<script>
+  let sec = 5;
+  const timer = document.getElementById("timer");
+
+  const interval = setInterval(() => {
+    sec--;
+    timer.innerText = sec;
+    if (sec <= 0) {
+      clearInterval(interval);
+      window.location.href = "/";
+    }
+  }, 1000);
+</script>
+
+</body>
+</html>
