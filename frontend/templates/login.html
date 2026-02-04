@@ -1,260 +1,312 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Login | MedExplain</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<!-- Material & Typography -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
 :root {
-  --bg-soft: #eef5f9;
-  --card-bg: #ffffff;
-  --text-dark: #1e3a5f;
-  --text-light: #64748b;
+  /* Matching Signup Theme */
+  --bg-flow: radial-gradient(circle at top right, rgba(0,0,0,0.05), transparent 60%);
+  --glass-bg: rgba(0, 0, 0, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --text-white: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --input-fill: rgba(255, 255, 255, 0.07);
 }
 
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: "Inter", sans-serif; }
+
 body {
-  margin: 0;
-  font-family: "Inter", sans-serif;
-  background: var(--bg-soft);
+  min-height: 100vh;
+  background-color: #ffffff;
+  background-image: var(--bg-flow);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== MAIN WRAPPER ===== */
+.auth-wrapper {
+  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  padding: 40px 20px;
 }
 
-.container-card {
-  display: flex;
-  width: 90%;
-  max-width: 1400px;
-  height: 82vh;
-  background: var(--card-bg);
-  border-radius: 42px;
-  overflow: hidden;
-  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.14);
-  position: relative;
+/* ===== GLASS CARD ===== */
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 32px;
+  padding: 50px 35px;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4);
+  color: var(--text-white);
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.navbar {
-  position: absolute;
-  top: 28px;
-  left: 45px;
-  font-size: 26px;
-  font-weight: 900;
-  color: var(--text-dark);
-}
-
-.left-panel {
-  width: 50%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 70px;
-  animation: fadeUp .9s ease-out forwards;
-}
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(28px); }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.left-panel h1 {
-  font-size: 3.3rem;
-  font-weight: 900;
-  color: var(--text-dark);
+/* ===== BRANDING ===== */
+.brand-area {
+  text-align: center;
+  margin-bottom: 35px;
 }
 
-.left-panel p {
-  font-size: 1.1rem;
-  color: var(--text-light);
-  margin-top: 12px;
+.brand-icon {
+  color: #fff;
+  font-size: 42px;
+  margin-bottom: 10px;
 }
 
-.right-panel {
-  width: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.brand-name {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+/* ===== FORM ELEMENTS ===== */
+.form-group {
+  margin-bottom: 18px;
   position: relative;
 }
 
-.right-panel::before {
-  content: "";
-  position: absolute;
-  right: -20%;
-  top: 50%;
-  width: 135%;
-  height: 150%;
-  background: var(--bg-soft);
-  border-radius: 50% 0 0 50%;
-  transform: translateY(-50%);
-  z-index: 0;
-}
-
-.login-box {
-  width: 90%;
-  max-width: 420px;
-  background: var(--card-bg);
-  padding: 45px;
-  border-radius: 22px;
-  box-shadow: 0 15px 45px rgba(0,0,0,0.12);
-  z-index: 2;
-  text-align: center;
-}
-
-.login-title {
-  font-size: 1.7rem;
-  font-weight: 800;
-  color: var(--text-dark);
-  margin-bottom: 22px;
-}
-
 .form-control {
-  height: 48px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-}
-
-.btn-login {
-  background: var(--text-dark);
+  background: var(--input-fill);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 15px 18px;
   color: #fff;
+  font-size: 15px;
+}
+
+.form-control:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary-custom {
   width: 100%;
-  padding: 12px;
-  border-radius: 50px;
-  font-size: 1rem;
+  padding: 15px;
+  background: #ffffff;
+  color: #000000;
   border: none;
-  cursor: pointer;
-  transition: .3s;
-}
-
-.btn-login:hover {
-  background: #162b44;
-  transform: translateY(-3px);
-}
-
-.helper-links {
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 16px;
   margin-top: 10px;
-  font-size: .9rem;
-  text-align: center;
+  transition: all 0.2s ease;
 }
 
-.helper-links a {
+.btn-primary-custom:hover {
+  background: #f0f0f0;
+  transform: translateY(-2px);
+}
+
+/* ===== SSO BUTTONS ===== */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 25px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+.sso-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.btn-sso {
+  background: var(--input-fill);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   text-decoration: none;
-  color: var(--text-dark);
+  font-size: 12px;
+  font-weight: 500;
+  transition: 0.2s;
 }
 
-.helper-links a:hover {
-  text-decoration: underline;
+.btn-sso:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #fff;
+  color: #fff;
 }
 
-.signup-link {
-  margin-top: 14px;
-  font-size: .9rem;
+.sso-icon { font-size: 20px; }
+
+/* ===== LINKS ===== */
+.auth-links {
+  margin-top: 30px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
 }
 
-.footer {
-  position: absolute;
-  bottom: 22px;
-  left: 45px;
-  font-size: .85rem;
-  color: var(--text-light);
+.auth-links a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
 }
 
-.toast-container {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 9999;
+.auth-links a:hover { text-decoration: underline; }
+
+/* ===== BLACK FOOTER BAR ===== */
+.black-footer {
+  background: #000000;
+  color: #ffffff;
+  padding: 25px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-@media(max-width:992px) {
-  .container-card { flex-direction: column; height: auto; padding-bottom: 45px; }
-  .left-panel, .right-panel { width: 100%; text-align: center; padding: 45px 25px; }
-  .right-panel::before { width: 100%; right: 0; height: 100%; border-radius: 45% 45% 0 0; }
-  .footer { position: static; margin-top: 20px; }
+.footer-right {
+  display: flex;
+  gap: 20px;
+}
+
+@media (max-width: 600px) {
+  .black-footer { flex-direction: column; gap: 15px; text-align: center; }
+  .sso-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 
 <body>
 
-<!-- ================= FLASH TOAST ================= -->
-<div class="toast-container">
-  <div id="flashToast" class="toast text-bg-danger border-0">
-    <div class="toast-body" id="flashMessage"></div>
-  </div>
-</div>
-
-<div class="container-card">
-
-  <div class="navbar">MedExplain</div>
-
-  <div class="left-panel">
-    <h1>Welcome Back 🦋</h1>
-    <p>
-      Secure access to explainable medical AI insights and
-      clinical decision-support tools.
-    </p>
-  </div>
-
-  <div class="right-panel">
-    <div class="login-box">
-
-      <div class="login-title">Sign In</div>
-
-      <form method="POST" action="/login">
-        <input type="email"
-               name="email"
-               class="form-control mb-3"
-               placeholder="Email address"
-               required>
-
-        <input type="password"
-               name="password"
-               class="form-control mb-3"
-               placeholder="Password"
-               required>
-
-        <button class="btn-login">Login</button>
-      </form>
-
-      <div class="helper-links">
-        <a href="/forgot-password">Forgot password?</a>
-      </div>
-
-      <div class="signup-link">
-        Don’t have an account?
-        <a href="/signup">Create one</a>
-      </div>
-
+<!-- FLASH TOAST (Preserved Backend Logic) -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+  <div id="flashToast" class="toast text-bg-danger border-0" style="border-radius: 12px;">
+    <div class="d-flex p-2">
+      <div class="toast-body" id="flashMessage"></div>
+      <button type="button" class="btn-close btn-close-white m-auto me-2" data-bs-dismiss="toast"></button>
     </div>
   </div>
-
-  <div class="footer">
-    © 2025 MedExplain • Explainable Medical AI
-  </div>
-
 </div>
+
+<div class="auth-wrapper">
+  <div class="login-card">
+
+    <div class="brand-area">
+      <span class="material-icons-round brand-icon">health_and_safety</span>
+      <h1 class="brand-name">MedExplain</h1>
+      <p class="subtitle">Secure access to clinical AI insights</p>
+    </div>
+
+    <!-- FORM -->
+    <form method="POST" action="/login">
+      <div class="form-group">
+        <input type="email" name="email" class="form-control" placeholder="Email Address" required />
+      </div>
+
+      <div class="form-group">
+        <input type="password" name="password" class="form-control" placeholder="Password" required />
+      </div>
+
+      <button type="submit" class="btn-primary-custom">
+        Sign In
+      </button>
+    </form>
+
+    <div class="divider">or continue with</div>
+
+    <!-- SSO GRID -->
+    <div class="sso-grid">
+      <a href="/auth/google" class="btn-sso">
+        <span class="sso-icon">🌐</span>
+        Google
+      </a>
+      <a href="/auth/github" class="btn-sso">
+        <span class="material-icons-round sso-icon">code</span>
+        GitHub
+      </a>
+      <a href="/auth/microsoft" class="btn-sso">
+        <span class="sso-icon">🪟</span>
+        Microsoft
+      </a>
+    </div>
+
+    <!-- LINKS -->
+    <div class="auth-links">
+      <div><a href="/forgot-password">Forgot password?</a></div>
+      <div class="mt-2">
+        New here? <a href="/signup">Create account</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SOLID BLACK FOOTER -->
+<footer class="black-footer">
+  <div class="footer-left">
+    © 2026 MedExplain Intelligence • Educational Medical AI
+  </div>
+  <div class="footer-right">
+    <span style="color: rgba(255,255,255,0.4)">Privacy</span>
+    <span style="color: rgba(255,255,255,0.4)">Terms</span>
+  </div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+// Flash Toast Logic (Preserved)
 document.addEventListener("DOMContentLoaded", () => {
   const cookie = document.cookie.split("; ").find(r => r.startsWith("flash="));
   if (cookie) {
     const msg = decodeURIComponent(cookie.split("=")[1]);
-    flashToast(msg);
+    document.getElementById("flashMessage").textContent = msg;
+    new bootstrap.Toast(document.getElementById("flashToast")).show();
     document.cookie = "flash=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
   }
 });
-
-function flashToast(message) {
-  document.getElementById("flashMessage").textContent = message;
-  new bootstrap.Toast(document.getElementById("flashToast")).show();
-}
 </script>
 
 </body>

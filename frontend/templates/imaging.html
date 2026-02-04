@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid fade-in pb-5">
+    
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="fw-900 m-0" style="letter-spacing:-1.5px;">Imaging Intelligence</h1>
+            <p class="text-muted small fw-bold text-uppercase opacity-50">Multimodal ResNet + RAG XAI Pipeline</p>
+        </div>
+        <div class="d-flex gap-3">
+            <select id="scanType" class="form-select form-select-sm rounded-pill px-3 border-2 fw-bold" style="width: 160px;">
+                <option value="chest">Chest X-Ray</option>
+                <option value="brain">Brain MRI</option>
+            </select>
+            <input type="file" id="imageInput" hidden onchange="startScan(this)" accept="image/*">
+            <button class="btn btn-dark rounded-pill px-4 btn-sm fw-bold shadow-sm" onclick="document.getElementById('imageInput').click()">
+                <span class="material-icons fs-6 align-middle me-1">add_a_photo</span> ANALYZE SCAN
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- LEFT: VIEWER -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 bg-white border overflow-hidden">
+                <div class="bg-black text-white p-3 px-4 small d-flex justify-content-between align-items-center">
+                    <span class="d-flex align-items-center gap-2">
+                        <span class="material-icons fs-6 text-primary">biotech</span> DIGITAL SCAN
+                    </span>
+                    <div class="form-check form-switch m-0 d-none" id="xaiToggleBox">
+                        <input class="form-check-input" type="checkbox" id="heatmapToggle" checked onchange="toggleHeatmap()">
+                        <label class="form-check-label tiny-text fw-bold text-white" for="heatmapToggle">GRAD-CAM OVERLAY</label>
+                    </div>
+                </div>
+                
+                <div class="viewer-area bg-dark d-flex align-items-center justify-content-center position-relative" style="min-height: 500px; overflow: hidden;">
+                    <img id="displayImg" class="img-fluid d-none w-100 h-100" style="object-fit: contain;">
+                    <img id="heatmapImg" class="img-fluid position-absolute top-0 start-0 w-100 h-100 d-none" style="object-fit: contain; z-index: 5; transition: opacity 0.4s;">
+                    <div id="laser" class="scan-laser d-none"></div>
+                    <div id="placeholder" class="text-white opacity-25 text-center">
+                        <span class="material-icons display-1">center_focus_strong</span>
+                        <p class="fw-bold mt-2">Awaiting Image for ResNet Inference</p>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-light border-0 py-3 px-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="tiny-text fw-bold" id="scanStatus">STATUS: IDLE</span>
+                        <span class="badge bg-primary rounded-pill tiny-text" id="confBadge">0% CONFIDENCE</span>
+                    </div>
+                    <div class="progress" style="height: 6px; background: #ddd;">
+                        <div id="confBar" class="progress-bar bg-primary" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: RESULTS -->
+        <div class="col-lg-6">
+            <div class="row g-4">
+                <div class="col-md-5">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white border h-100 text-center">
+                        <h6 class="fw-bold text-start opacity-50 mb-4 small text-uppercase">Localization</h6>
+                        <div class="anatomy-container" style="height: 250px;">
+                            <svg viewBox="0 0 200 500" class="h-100 human-silhouette">
+                                <path d="M100,50 c-15,0-25,10-25,25 s10,25,25,25 s25-10,25-25 S115,50,100,50 z M75,110 c-20,20-25,60-25,100 s5,150,15,200 s20,50,35,50 s25-20,35-50 s15-160,15-200 s-5-80-25-100 H75 z" fill="#f0f0f0" stroke="#e0e0e0" stroke-width="1"/>
+                                <circle id="organ-brain" cx="100" cy="75" r="18" class="organ" />
+                                <path id="organ-lungs" d="M80,140 q20,-10 40,0 q5,30 -5,60 q-15,10 -30,0 q-10,-30 -5,-60" class="organ" />
+                                <path id="organ-heart" d="M105,165 a10,10 0 1,1 20,0 a10,10 0 1,1 -20,0" class="organ" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-black text-white h-100 shadow-lg">
+                        <h6 class="fw-bold small d-flex align-items-center gap-2 mb-4">
+                            <span class="material-icons text-warning">verified_user</span> RAG-GROUNDED TRIAGE
+                        </h6>
+                        <div id="triageLoading" class="text-muted small italic">Awaiting AI findings...</div>
+                        <div id="triageBox" class="d-none">
+                             <div class="tiny-text text-uppercase opacity-50">Detected Finding</div>
+                             <div class="h3 fw-bold text-primary mb-3" id="findingText">--</div>
+                             <div class="small opacity-75 mb-3" id="ragText"></div>
+                             <div class="badge rounded-pill px-3" id="priorityBadge">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-light border">
+                        <h6 class="fw-bold text-primary mb-3 small text-uppercase">Explainable AI (XAI) Report</h6>
+                        <div id="narrativeText" class="small text-dark narrative-flow">Findings will appear here.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .fw-900 { font-weight: 900; }
+    .tiny-text { font-size: 10px; }
+    .scan-laser { position: absolute; width: 100%; height: 3px; background: #0f0; box-shadow: 0 0 15px #0f0; animation: scanMove 2s infinite linear; }
+    @keyframes scanMove { from { top: 0; } to { top: 100%; } }
+    .organ { transition: all 0.5s ease; fill: #e0e0e0; opacity: 0.2; }
+    .organ.danger { fill: #ff4d4d !important; opacity: 1 !important; }
+</style>
+
+<script>
+async function startScan(input) {
+    if(!input.files[0]) return;
+    
+    const scanType = document.getElementById("scanType").value;
+    const laser = document.getElementById("laser");
+    const displayImg = document.getElementById("displayImg");
+    const heatmapImg = document.getElementById("heatmapImg");
+
+    // UI Reset
+    displayImg.src = URL.createObjectURL(input.files[0]);
+    displayImg.classList.remove("d-none");
+    laser.classList.remove("d-none");
+    document.getElementById("placeholder").classList.add("d-none");
+    if(heatmapImg) heatmapImg.classList.add("d-none");
+    document.getElementById("scanStatus").innerText = "STATUS: SCANNING...";
+
+    const formData = new FormData();
+    formData.append("file", input.files[0]);
+    formData.append("scan_type", scanType);
+
+    try {
+        const res = await fetch("/api/imaging/analyze", { method: "POST", body: formData });
+        const result = await res.json();
+        if(result.status === "success") renderResults(result.data);
+    } catch (e) {
+        document.getElementById("scanStatus").innerText = "STATUS: ERROR";
+    } finally {
+        laser.classList.add("d-none");
+    }
+}
+
+function renderResults(data) {
+    // 1. Digital Scan
+    document.getElementById("heatmapImg").src = data.heatmap;
+    document.getElementById("heatmapImg").classList.remove("d-none");
+    document.getElementById("xaiToggleBox").classList.remove("d-none");
+    
+    // 2. Metrics
+    document.getElementById("confBadge").innerText = data.confidence + " CONFIDENCE";
+    document.getElementById("confBar").style.width = data.confidence;
+    document.getElementById("scanStatus").innerText = "STATUS: COMPLETE";
+
+    // 3. Localization
+    document.querySelectorAll('.organ').forEach(el => el.classList.remove('danger'));
+    const organ = document.getElementById(`organ-${data.svg_id}`);
+    if(organ) organ.classList.add('danger');
+
+    // 4. Triage Box
+    document.getElementById("triageLoading").classList.add("d-none");
+    document.getElementById("triageBox").classList.remove("d-none");
+    document.getElementById("findingText").innerText = data.finding;
+    document.getElementById("ragText").innerText = data.rag_explanation;
+    
+    const badge = document.getElementById("priorityBadge");
+    badge.innerText = data.triage;
+    badge.className = data.triage === 'URGENT' ? 'badge bg-danger rounded-pill px-3' : 'badge bg-success rounded-pill px-3';
+
+    // 5. Narrative
+    document.getElementById("narrativeText").innerText = data.narrative;
+}
+
+function toggleHeatmap() {
+    const heatmap = document.getElementById("heatmapImg");
+    heatmap.style.opacity = document.getElementById("heatmapToggle").checked ? "1" : "0";
+}
+</script>
+{% endblock %}

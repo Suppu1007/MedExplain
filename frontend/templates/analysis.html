@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid fade-in pb-5">
+    
+    <!-- 1. HEADER SECTION -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-5">
+        <div>
+            <h1 class="fw-900 m-0" style="letter-spacing:-1.5px;">Report Analysis</h1>
+            <p class="text-muted small fw-bold text-uppercase opacity-50">BioBERT NLP + SHAP Explainability Dashboard</p>
+        </div>
+        <div class="d-flex gap-2">
+            <input type="file" id="pdfInput" hidden onchange="uploadAndAnalyze(this)">
+            <button class="btn btn-outline-dark rounded-pill px-4 fw-bold shadow-sm" onclick="document.getElementById('pdfInput').click()">
+                <span class="material-icons fs-6 align-middle me-1">file_upload</span> PROCESS REPORT
+            </button>
+            <button id="exportBtn" class="btn btn-dark rounded-pill px-4 fw-bold shadow-lg" onclick="exportToDoc()" disabled>
+                <span class="material-icons fs-6 align-middle me-1">picture_as_pdf</span> EXPORT DOC
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- 2. VISUAL ANATOMY MAP -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white border h-100 text-center">
+                <h6 class="fw-bold text-start opacity-50 mb-4 small text-uppercase">Anatomical Focus</h6>
+                <div class="anatomy-container">
+                    <svg viewBox="0 0 200 500" class="human-silhouette">
+                        <path d="M100,50 c-15,0-25,10-25,25 s10,25,25,25 s25-10,25-25 S115,50,100,50 z M75,110 c-20,20-25,60-25,100 s5,150,15,200 s20,50,35,50 s25-20,35-50 s15-160,15-200 s-5-80-25-100 H75 z" fill="#f4f4f4"/>
+                        <circle id="organ-brain" cx="100" cy="75" r="12" class="organ success" />
+                        <path id="organ-lungs" d="M80,140 q20,-10 40,0 q5,30 -5,60 q-15,10 -30,0 q-10,-30 -5,-60" class="organ success" />
+                        <path id="organ-heart" d="M105,165 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0" class="organ success" />
+                        <rect id="organ-liver" x="110" y="205" width="22" height="12" rx="4" class="organ success" />
+                        <g id="organ-kidneys">
+                            <rect x="82" y="225" width="8" height="12" rx="3" class="organ success" />
+                            <rect x="110" y="225" width="8" height="12" rx="3" class="organ success" />
+                        </g>
+                    </svg>
+                </div>
+                <div class="mt-4 pt-3 border-top text-start">
+                    <div class="small fw-bold mb-2 text-uppercase tiny-text">Status Logic</div>
+                    <div class="tiny-text d-flex align-items-center gap-2 mb-1"><span class="dot bg-success"></span> Balanced physiological baseline</div>
+                    <div class="tiny-text d-flex align-items-center gap-2"><span class="dot bg-danger pulse"></span> SHAP high-influence risk detected</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. DATA & SHAP EXPLAINER -->
+        <div class="col-lg-8">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-4 bg-white border overflow-hidden">
+                        <div class="bg-black text-white p-3 px-4 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold small text-uppercase">Biomarker Feature Contribution (SHAP)</span>
+                            <span id="markerCount" class="badge bg-white text-dark rounded-pill">0 Detectors</span>
+                        </div>
+                        <div class="table-responsive" style="max-height: 380px;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light tiny-text fw-bold">
+                                    <tr>
+                                        <th class="ps-4">CLINICAL MARKER (BioBERT)</th>
+                                        <th class="text-center">RESULT</th>
+                                        <th class="text-center">AI INFLUENCE</th>
+                                        <th class="text-end pe-4">STATUS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="markerTable">
+                                    <tr><td colspan="4" class="text-center py-5 opacity-25 small">Ready for clinical data ingestion.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white border h-100">
+                        <h6 class="fw-bold small opacity-50 mb-3 text-uppercase">Triage Decision</h6>
+                        <div id="specialistInfo" class="d-flex align-items-center gap-3">
+                             <span class="material-icons text-muted opacity-25" style="font-size:40px;">person_search</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-black text-white h-100">
+                        <h6 class="fw-bold small d-flex align-items-center gap-2 mb-3">
+                            <span class="material-icons text-warning">verified_user</span> RAG-GROUNDED PRECAUTIONS
+                        </h6>
+                        <ul id="precautionList" class="list-unstyled small opacity-75 mb-0" style="line-height:1.7;"></ul>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-light border">
+                        <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                            <span class="material-icons">psychology</span> EXPLAINABLE NARRATIVE (XAI)
+                        </h6>
+                        <div id="narrativeText" class="narrative-flow text-dark small">Synthesizing clinical evidence...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .fw-900 { font-weight: 900; }
+    .tiny-text { font-size: 10px; letter-spacing: 0.5px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    
+    .anatomy-container { height: 420px; display: flex; align-items: center; justify-content: center; }
+    .human-silhouette { height: 100%; width: auto; }
+    
+    .organ { transition: fill 0.8s ease; fill: #e0e0e0; opacity: 0.3; }
+    .organ.success { fill: #198754; opacity: 0.3; }
+    .organ.danger { fill: #dc3545; opacity: 1; animation: pulse-red 1.5s infinite; }
+    @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+    
+    /* SHAP Bar Styling */
+    .shap-container { width: 100px; height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin: 0 auto; }
+    .shap-bar { height: 100%; transition: width 1s ease-in-out; }
+
+    .narrative-flow { white-space: pre-wrap; font-size: 15px; line-height: 1.8; }
+    .bg-black { background: #000 !important; }
+</style>
+
+<script>
+let lastAnalysisData = null;
+
+async function uploadAndAnalyze(input) {
+    if(!input.files[0]) return;
+    const formData = new FormData();
+    formData.append("file", input.files[0]);
+
+    document.getElementById("narrativeText").innerHTML = `<div class="spinner-border spinner-border-sm text-primary"></div> Analyzing features with SHAP & BioBERT...`;
+
+    try {
+        const res = await fetch("/api/labs/full-analysis", { method: "POST", body: formData });
+        const result = await res.json();
+        if(res.ok) {
+            lastAnalysisData = result.data;
+            renderRealWorldDashboard(result.data);
+            document.getElementById("exportBtn").disabled = false;
+        }
+    } catch (e) { alert("XAI Ingestion failed."); }
+}
+
+function renderRealWorldDashboard(data) {
+    const s = data.structured_metrics; 
+    document.getElementById("narrativeText").innerText = data.human_narrative.replace(/\[.*?\]/g, "").trim();
+
+    // Markers Table with SHAP Visualization
+    document.getElementById("markerCount").innerText = `${s.markers.length} Parameters`;
+    document.getElementById("markerTable").innerHTML = s.markers.map(m => {
+        // Calculate SHAP bar color (Red for high influence on risk, Blue for normal)
+        const shapColor = m.status === 'normal' ? '#4285f4' : '#dc3545';
+        const shapWidth = (m.shap_impact || 0.1) * 100;
+
+        return `
+        <tr class="border-bottom">
+            <td class="ps-4 py-3">
+                <div class="fw-bold small text-dark">${m.name}</div>
+                <div class="tiny-text opacity-50 text-uppercase">BioBERT: ${m.simplified_name || 'Standard Term'}</div>
+            </td>
+            <td class="text-center fw-900">${m.value} <small class="tiny-text opacity-50">${m.unit || ''}</small></td>
+            <td class="text-center">
+                <div class="shap-container" title="Feature influence: ${shapWidth.toFixed(0)}%">
+                    <div class="shap-bar" style="width: ${shapWidth}%; background: ${shapColor}"></div>
+                </div>
+            </td>
+            <td class="text-end pe-4">
+                <span class="badge rounded-pill bg-${getStatusColor(m.status)} bg-opacity-10 text-${getStatusColor(m.status)} px-3" style="font-size:10px;">
+                    ● ${m.status.toUpperCase()}
+                </span>
+            </td>
+        </tr>
+    `}).join("");
+
+    // Body Mapping
+    document.querySelectorAll('.organ').forEach(el => { el.className = 'organ success'; el.style.opacity = "0.2"; });
+    if(s.body_mapping) {
+        s.body_mapping.forEach(mapping => {
+            const el = document.getElementById(`organ-${mapping.organ_id}`);
+            if(el) { el.className = `organ ${mapping.status}`; el.style.opacity = "1"; }
+        });
+    }
+
+    // Triage & Specialist
+    document.getElementById("specialistInfo").innerHTML = `
+        <div class="bg-primary bg-opacity-10 p-2 rounded-3 text-primary"><span class="material-icons">medical_services</span></div>
+        <div>
+            <div class="fw-bold small text-dark">${s.triage.specialist}</div>
+            <div class="tiny-text fw-bold text-primary">URGENCY: ${s.triage.urgency}</div>
+            <div class="tiny-text opacity-50">Driver: ${s.triage.primary_driver || 'Multi-factor'}</div>
+        </div>`;
+    
+    document.getElementById("precautionList").innerHTML = s.precautions.map(p => `
+        <li class="mb-2 d-flex gap-2 align-items-start"><span class="material-icons text-warning" style="font-size:14px; margin-top:4px;">verified</span><span>${p}</span></li>
+    `).join("");
+}
+
+async function exportToDoc() {
+    if (!lastAnalysisData) return;
+    const res = await fetch("/api/labs/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            structured: lastAnalysisData.structured_metrics,
+            narrative: lastAnalysisData.human_narrative
+        })
+    });
+    if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `MediExplain_XAI_Report.pdf`;
+        document.body.appendChild(a); a.click(); a.remove();
+    }
+}
+
+function getStatusColor(status) {
+    const s = status.toLowerCase();
+    if (s === 'normal' || s === 'success') return 'success';
+    if (s === 'critical' || s === 'danger') return 'danger';
+    return 'warning';
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    {% if historical_data %}
+        const history = {{ historical_data | tojson | safe }};
+        lastAnalysisData = history;
+        renderRealWorldDashboard(history);
+        document.getElementById("exportBtn").disabled = false;
+    {% endif %}
+});
+</script>
+{% endblock %}

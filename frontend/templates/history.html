@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container fade-in pb-5">
+    
+    <div class="mb-5">
+        <h1 class="fw-900 m-0" style="letter-spacing:-1.5px;">Health Vault</h1>
+        <p class="text-muted small fw-bold text-uppercase">Encrypted Clinical History</p>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            {% if timeline %}
+            <div class="timeline-container">
+                {% for item in timeline %}
+                <div class="timeline-item d-flex gap-4 mb-5">
+                    <div class="timeline-meta text-end" style="min-width: 100px;">
+                        <div class="fw-bold small">{{ item.date }}</div>
+                        <div class="tiny-text opacity-50">{{ item.type }}</div>
+                    </div>
+                    
+                    <div class="timeline-marker">
+                        <div class="marker-line"></div>
+                        <div class="marker-dot bg-black">
+                            <span class="material-icons text-white" style="font-size:14px;">{{ item.icon }}</span>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 shadow-sm rounded-4 p-4 flex-grow-1 bg-white border">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold m-0">{{ item.title }}</h6>
+                            <span class="badge rounded-pill bg-{{ 'danger' if item.status == 'DANGER' else 'success' }} bg-opacity-10 text-{{ 'danger' if item.status == 'DANGER' else 'success' }} px-3">
+                                {{ item.status }}
+                            </span>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-light rounded-pill px-3 border tiny-text fw-bold">VIEW DASHBOARD</button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 opacity-25">
+                <span class="material-icons display-1">history_toggle_off</span>
+                <p class="fw-bold">Your clinical history is empty.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .fw-900 { font-weight: 900; }
+    .tiny-text { font-size: 10px; }
+    .timeline-marker { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .marker-line { position: absolute; top: 0; bottom: -50px; width: 1px; background: #eee; z-index: 1; }
+    .marker-dot { 
+        width: 32px; height: 32px; border-radius: 50%; 
+        display: flex; align-items: center; justify-content: center; 
+        position: relative; z-index: 2; 
+    }
+    .timeline-item:last-child .marker-line { display: none; }
+</style>
+{% endblock %}
