@@ -1,4 +1,4 @@
-# MediExplain System Architecture
+# MediExplain System Arch
 > Multimodal Explainable AI (XAI) Pipeline
 
 This document outlines the technical architecture of MediExplain, categorized into six distinct layers that function as a cohesive intelligent system.
