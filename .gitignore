@@ -1,0 +1,41 @@
+# Environment files
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# Python virtual environments
+venv/
+env/
+bin/
+lib/
+lib64/
+pyvenv.cfg
+include/
+share/
+
+# Project documentation / extras
+docs/
+tests/
+medical_library/
+MedExplain/
+Final Project_17th.odt
+PROJECT_SYNOPSIS.md
+STATUS_REPORT.md
+
+# Scripts
+generate_*.py
+inspect_models.py
+integrate_model.sh
+integrate_new_nih_model.sh
+startup.sh
+test_mongo.py
+
+# Docker local files
+Dockerfile.app
+.dockerignore
+
+# Python cache
+__pycache__/
+*.pyc
