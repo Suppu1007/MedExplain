@@ -1,26 +1,33 @@
 fastapi
 uvicorn
-scikit-learn
-# Database
+groq==0.15.0
+scikit-learn==1.6.1
 pymongo[srv]
 python-dotenv
-
-# Templates & Forms
 jinja2
 python-multipart
-
-# Authentication & Security
-bcrypt
-passlib[bcrypt]
+pdfplumber==0.10.3
+easyocr==1.7.1
+pdf2image==1.17.0
+opencv-python-headless
+bcrypt==4.0.1
+passlib[bcrypt]==1.7.4
 python-jose[cryptography]
 PyJWT==2.8.0
 email-validator
-
-# Utilities
 requests
-
-
-#llm
+httpx==0.27.2
+xhtml2pdf==0.2.11
+reportlab
+html5lib
+xgboost
+lightgbm
+langchain==0.3.0
+langchain-community==0.3.0
+langchain-groq==0.2.0
+langchain-ollama==0.2.0
+pandas
+shap
 
 # ---- RAG stack (LOCKED) ----
 torch==2.1.2+cpu
@@ -28,4 +35,3 @@ sentence-transformers==2.6.1
 transformers==4.35.2
 numpy==1.26.4
 scipy==1.11.4
-scikit-learn==1.3.2

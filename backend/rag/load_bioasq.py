@@ -1,5 +1,5 @@
 from pathlib import Path
-from app.rag.xml_parser import parse_bioasq_xml
+from rag.xml_parser import parse_bioasq_xml
 
 def load_all_bioasq(base_path="app/data/bioasq"):
     documents = []

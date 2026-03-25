@@ -2,20 +2,27 @@ from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from datetime import datetime
 
-from app.main import templates
-from app.core.config import users_collection
-from app.core.security import (
+from core.templates import templates
+from core.config import users_collection
+from core.security import (
     hash_password,
     verify_password,
     create_access_token,
     decode_token,
     validate_password,
 )
-from app.core.dependencies import get_current_user, is_admin
-from app.utils.email_utils import (
+from core.dependencies import get_current_user, is_admin
+from utils.email_utils import (
     send_account_created_email,
     send_reset_password_email,
 )
+from core.config import (
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI,
+)
+import httpx
+import json
 
 # =====================================================
 # HELPERS
@@ -27,13 +34,14 @@ def flash_redirect(url: str, message: str):
         message,
         max_age=5,
         httponly=True,
-        samesite="strict",
+        samesite="lax",
     )
     return response
 
 
-def redirect_user(email: str):
-    return "/dashboard" if is_admin(email) else "/home"
+async def redirect_user(email: str):
+    # Redirect everyone to Home (Launchpad) first
+    return "/home"
 
 
 # =====================================================
@@ -44,6 +52,7 @@ api_router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 
 # =====================================================
+# =====================================================
 # LANDING
 # =====================================================
 @ui_router.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -52,7 +61,8 @@ async def landing(request: Request):
     email = decode_token(token) if token else None
 
     if email:
-        return RedirectResponse(redirect_user(email), status_code=303)
+        target = await redirect_user(email)
+        return RedirectResponse(target, status_code=303)
 
     flash = request.cookies.get("flash")
     response = templates.TemplateResponse(
@@ -64,6 +74,8 @@ async def landing(request: Request):
         response.delete_cookie("flash")
 
     return response
+
+
 
 
 # =====================================================
@@ -97,16 +109,17 @@ async def login(
     token = create_access_token(email)
 
     response = RedirectResponse(
-        redirect_user(email),
+        await redirect_user(email),
         status_code=303,
     )
     response.set_cookie(
         "access_token",
         token,
         httponly=True,
-        samesite="strict",
+        samesite="lax",
+        path="/",
     )
-    response.set_cookie("flash", "Login successful!", max_age=3)
+    response.set_cookie("flash", "Login successful!", max_age=3, path="/")
 
     return response
 
@@ -167,7 +180,7 @@ async def signup(
 @ui_router.get("/logout", include_in_schema=False)
 async def logout():
     response = RedirectResponse("/", status_code=303)
-    response.delete_cookie("access_token")
+    response.delete_cookie("access_token", path="/")
     response.set_cookie("flash", "Logged out successfully", max_age=3)
     return response
 
@@ -190,7 +203,7 @@ async def forgot_password_page(request: Request):
 
 
 @ui_router.post("/forgot-password", include_in_schema=False)
-async def forgot_password(email: str = Form(...)):
+async def forgot_password(request: Request, email: str = Form(...)):
     email = email.strip().lower()
     user = users_collection.find_one({"email": email})
 
@@ -198,7 +211,11 @@ async def forgot_password(email: str = Form(...)):
         return flash_redirect("/forgot-password", "Email not found")
 
     reset_token = create_access_token(email)
-    reset_link = f"http://localhost:8000/reset-password?token={reset_token}"
+    # Use relative path or detect host from request if possible, 
+    # but for now, we'll keep it simple and fix the port if needed.
+    # Ideally, this should come from an environment variable.
+    base_url = str(request.base_url).rstrip("/")
+    reset_link = f"{base_url}/reset-password?token={reset_token}"
 
     send_reset_password_email(email, user["name"], reset_link)
 
@@ -250,6 +267,94 @@ async def reset_password(
     )
 
     return flash_redirect("/login", "Password reset successful!")
+
+
+# =====================================================
+# GOOGLE SSO
+# =====================================================
+
+@ui_router.get("/auth/google")
+async def google_login():
+    if not GOOGLE_CLIENT_ID:
+        return flash_redirect("/login", "Google SSO not configured")
+        
+    scope = "openid email profile"
+    url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={GOOGLE_CLIENT_ID}&"
+        f"redirect_uri={GOOGLE_REDIRECT_URI}&"
+        f"response_type=code&"
+        f"scope={scope}"
+    )
+    return RedirectResponse(url)
+
+
+@ui_router.get("/auth/google/callback")
+async def google_callback(request: Request, code: str = None):
+    if not code:
+        return flash_redirect("/login", "Google login failed")
+
+    # Exchange code for token
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+
+    async with httpx.AsyncClient() as client:
+        print(f"DEBUG: Exchanging code for token. Redirect URI: {GOOGLE_REDIRECT_URI}")
+        resp = await client.post(token_url, data=data)
+        if resp.status_code != 200:
+            print(f"DEBUG: Token exchange failed. Status: {resp.status_code}, Body: {resp.text}")
+            return flash_redirect("/login", "Google token exchange failed")
+        
+        token_data = resp.json()
+        id_token = token_data.get("id_token")
+        print(f"DEBUG: Token exchange successful. Got ID Token.")
+        
+        # Get user info
+        userinfo_url = f"https://www.googleapis.com/oauth2/v3/tokeninfo?id_token={id_token}"
+        user_resp = await client.get(userinfo_url)
+        if user_resp.status_code != 200:
+            print(f"DEBUG: Failed to get user info. Status: {user_resp.status_code}, Body: {user_resp.text}")
+            return flash_redirect("/login", "Failed to get Google user info")
+            
+        user_info = user_resp.json()
+        email = user_info.get("email")
+        name = user_info.get("name")
+        print(f"DEBUG: Got user email: {email}")
+        
+        if not email:
+            return flash_redirect("/login", "Email not provided by Google")
+
+        # Check if user exists
+        user = users_collection.find_one({"email": email})
+        if not user:
+            # Create new user
+            users_collection.insert_one({
+                "name": name,
+                "email": email,
+                "password": "[GOOG_SSO]", # Placeholder
+                "role": "User",
+                "status": "Active",
+                "created_at": datetime.utcnow(),
+            })
+
+        # Login user
+        token = create_access_token(email)
+        response = RedirectResponse(await redirect_user(email), status_code=303)
+        response.set_cookie(
+            "access_token",
+            token,
+            httponly=True,
+            samesite="lax",
+            path="/",
+        )
+        response.set_cookie("flash", f"Welcome back, {name}!", max_age=3, path="/")
+        return response
 
 
 # =====================================================

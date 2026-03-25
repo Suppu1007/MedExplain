@@ -3,7 +3,7 @@ from email.mime.multipart import MIMEMultipart
 import smtplib
 from datetime import datetime
 
-from app.core.config import EMAIL_SENDER, EMAIL_PASSWORD
+from core.config import EMAIL_SENDER, EMAIL_PASSWORD
 
 
 # =====================================================
@@ -11,7 +11,7 @@ from app.core.config import EMAIL_SENDER, EMAIL_PASSWORD
 # =====================================================
 def _send_email(to_email: str, subject: str, body: str):
     if not EMAIL_SENDER or not EMAIL_PASSWORD:
-        print("⚠ Email credentials not configured. Skipping email.")
+        print("Email credentials not configured. Skipping email.")
         return
 
     try:
@@ -26,10 +26,10 @@ def _send_email(to_email: str, subject: str, body: str):
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
 
-        print(f"📧 Email sent → {to_email}")
+        print(f"Email sent -> {to_email}")
 
     except Exception as e:
-        print(f"❌ Email send failed → {to_email}: {e}")
+        print(f"Email send failed -> {to_email}: {e}")
 
 
 # =====================================================

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Form
-from app.core.config import users_collection
-from app.core.dependencies import admin_required
+from core.config import users_collection
+from core.dependencies import admin_required
 
 
 # =====================================================

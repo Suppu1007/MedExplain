@@ -1,4 +1,4 @@
-from app.modules.assistant.prompt import SYSTEM_PROMPT
+from modules.assistant.prompt import SYSTEM_PROMPT
 
 def generate_ai_response(user_message: str, context: str = "") -> str:
     """

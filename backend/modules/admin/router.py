@@ -2,10 +2,10 @@ from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import RedirectResponse
 from datetime import datetime
 
-from app.core.config import users_collection, role_history_collection
-from app.core.dependencies import admin_required, get_current_user
-from app.utils.email_utils import send_role_change_email
-from app.main import templates
+from core.config import users_collection, role_history_collection
+from core.dependencies import admin_required, get_current_user
+from utils.email_utils import send_role_change_email
+from main import templates
 
 
 # =====================================================
@@ -37,14 +37,24 @@ async def admin_users_page(
     users = list(users_collection.find({}, {"password": 0}))
     flash = request.cookies.get("flash")
 
+    # Calculate System Metrics for the View
+    total_users = users_collection.count_documents({})
+    active_users = users_collection.count_documents({"status": "Active"})
+    pending_users = users_collection.count_documents({"status": "Pending"})
+
     response = templates.TemplateResponse(
-        "admin/users.html",
+        "admin_users.html",
         {
             "request": request,
             "users": users,
             "active_page": "users",
             "is_admin": True,
             "flash": flash,
+            "metrics": {
+                "total": total_users,
+                "active": active_users,
+                "pending": pending_users
+            }
         },
     )
 
@@ -140,6 +150,30 @@ async def update_user_status(
 
 
 # =====================================================
+# UI: DELETE USER (PERMANENT)
+# =====================================================
+@ui_router.post("/admin/users/delete", include_in_schema=False)
+async def delete_user(
+    email: str = Form(...),
+    admin_email: str = Depends(get_current_user),
+):
+    """
+    Permanently deletes a user.
+    """
+    if email == admin_email:
+         resp = RedirectResponse("/admin/users", status_code=303)
+         resp.set_cookie("flash", "You cannot delete yourself!", max_age=4)
+         return resp
+         
+    users_collection.delete_one({"email": email})
+    # Optional: Cascading delete of reports/history could go here.
+
+    resp = RedirectResponse("/admin/users", status_code=303)
+    resp.set_cookie("flash", "User deleted permanently.", max_age=4)
+    return resp
+
+
+# =====================================================
 # UI: ROLE CHANGE AUDIT HISTORY
 # =====================================================
 @ui_router.get("/admin/role-history", include_in_schema=False)
@@ -168,7 +202,7 @@ async def role_history_page(
     flash = request.cookies.get("flash")
 
     response = templates.TemplateResponse(
-        "admin/role_history.html",
+        "role_history.html",
         {
             "request": request,
             "history": history,
