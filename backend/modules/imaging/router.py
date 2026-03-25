@@ -1,0 +1,505 @@
+from fastapi import APIRouter, Body, Depends, UploadFile, File, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from datetime import datetime
+import traceback
+import base64
+import io
+import re
+
+# Internal Imports
+from db.mongo import db
+from core.dependencies import get_current_user, is_admin
+from services.vision_service import resnet_engine
+from services.rag_service import rag_service
+from services.llm_router import stream_llm_with_fallback
+from core.templates import templates
+
+# ReportLab Imports
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
+
+router = APIRouter(tags=["Imaging Intelligence"])
+
+# Collection for history
+imaging_collection = db["visual_analysis"]
+
+# =====================================================
+# UI ROUTE
+# =====================================================
+@router.get("/visualanalysis", response_class=HTMLResponse)
+async def get_imaging_dashboard(request: Request, user_email: str = Depends(get_current_user)):
+    if not user_email:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("imaging.html", {
+        "request": request,
+        "active_page": "imaging",
+        "user_email": user_email,
+        "is_admin": await is_admin(user_email)
+    })
+
+# =====================================================
+# API ROUTE: THE ANALYSIS ENGINE
+# =====================================================
+
+def sanitize_narrative(html: str) -> str:
+    """Post-processes LLM output to ensure clean HTML with no Markdown artifacts."""
+    text = html.strip()
+    
+    # Remove ```html ... ``` code fences the LLM sometimes wraps output in
+    text = re.sub(r'```html?\s*', '', text)
+    text = re.sub(r'```\s*', '', text)
+    
+    # Convert Markdown bold **text** to <b>text</b>
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    
+    # Convert Markdown headers ### text to <b>text</b><br/>
+    text = re.sub(r'#{1,4}\s*(.+)', r'<b>\1</b><br/>', text)
+    
+    # Convert Markdown bullets - text or * text into HTML list items
+    text = re.sub(r'^\s*[-*]\s+(.+)$', r'<li>\1</li>', text, flags=re.MULTILINE)
+    # Wrap consecutive <li> items in <ul>
+    text = re.sub(r'((?:<li>.+?</li>\s*)+)', r'<ul>\1</ul>', text, flags=re.DOTALL)
+    
+    # Remove stray parentheses typically found between blocks or at ends
+    text = re.sub(r'^\s*[\(\)]\s*$', '', text, flags=re.MULTILINE)
+
+    # Final cleanup: Remove any empty <p></p> or whitespace-only paragraphs
+    text = re.sub(r'<p>\s*(?:<br/?>\s*)*</p>', '', text)
+    text = re.sub(r'\n{2,}', '</p><p>', text)
+    # Aggressive cleanup of empty paragraphs that might have been created
+    text = re.sub(r'<p>\s*</p>', '', text)
+    text = text.replace('<p></p>', '')
+    
+    # Wrap in clinical-narrative div if not already
+    if 'clinical-narrative' not in text:
+        text = f'<div class="clinical-narrative">{text}</div>'
+    
+    return text.strip()
+
+
+def generate_medical_narrative(finding: str, context: str, scan_type: str, specialist: str, precautions: list) -> str:
+    """Generates a structured clinical narrative for SPECIFIC scan findings using LLM + RAG."""
+    precautions_str = ", ".join(precautions) if precautions else "General safety protocols apply."
+    
+    prompt = f"""You are a senior radiologist writing a patient-facing clinical report.
+
+SCAN TYPE: {scan_type.upper()}
+PRIMARY AI FINDING: {finding}
+ASSOCIATED OBSERVATIONS: {context.get('secondary', 'None')}
+CLINICAL REFERENCE: {context.get('main', 'General reference unavailable')}
+SPECIALIST: {specialist}
+PRECAUTIONS: {precautions_str}
+
+Write a professional 5-section clinical report using ONLY HTML tags. 
+Output EXACTLY 5 <p> blocks with <b> headers. No other text before or after.
+
+<p><b> Imaging Findings</b><br>
+Describe the primary finding ({finding}) and any secondary observations. Use simple, clear medical language. 
+Mention what these look like on the image. 2-3 sentences.</p>
+
+<p><b> Clinical Significance</b><br>
+Explain what this finding typically means medically.
+Include relevant context from the reference knowledge.
+Be honest but not alarming. If normal, be reassuring. 2-3 sentences.</p>
+
+<p><b> Specialist Recommendations</b><br>
+Provide specific next steps based on the recommendation for a {specialist}. 
+Explain why this specialist is the appropriate next step for clinical correlation. 2-3 sentences.</p>
+
+<p><b> Precautions</b><br>
+Highlight these critical safety steps: {precautions_str}. 
+Explain how these precautions help manage potential risks associated with the finding. 2-3 sentences.</p>
+
+<p><b> Clinical Disclaimer</b><br>
+This evaluation was generated by an AI screening system. It is not a definitive medical diagnosis. 
+Clinical correlation by a board-certified radiologist is required to confirm all findings.</p>
+
+        STRICT CLINICAL REPORT RULES:
+        1. Return EXACTLY 5 <p> blocks with <b> headers.
+        2. Tone: Senior Radiologist (Formal, precise, objective).
+        3. Communication: Use clear, professional, plain English. Avoid overly technical jargon where possible, but do NOT use metaphors or analogies (e.g., no "filter", no "engine").
+        4. NO Markdown syntax (no **, no ##, no ```).
+        5. Professional yet compassionate tone."""
+
+    full_response = ""
+    try:
+        for token in stream_llm_with_fallback(prompt):
+            full_response += token
+    except Exception as e:
+        print(f"Narrative Gen Error: {e}")
+        full_response = f"""<p><b> Imaging Findings</b><br>
+The AI has detected: <b>{finding}</b> on your {scan_type} scan.</p>
+<p><b> Clinical Significance</b><br>
+This finding requires further evaluation by a medical professional for accurate interpretation.</p>
+<p><b> Recommended Actions</b><br>
+Please share this report with your physician or radiologist for a thorough review.</p>
+<p><b> Disclaimer</b><br>
+This is an AI screening tool only. Always consult a qualified healthcare provider.</p>"""
+
+    return sanitize_narrative(full_response)
+
+
+def generate_general_narrative(vlm_observations: str, finding: str) -> str:
+    """
+    Takes raw VLM clinical observations and rewrites them into a
+    professional clinical evaluation using a 5-section clinical report structure.
+    """
+    prompt = f"""You are a Senior Radiologist writing a professional clinical evaluation.
+    
+    A vision AI has examined a medical image and produced these raw technical observations:
+    ---
+    {vlm_observations}
+    ---
+    DETECTED FINDING: {finding}
+    
+    Synthesize these observations into a high-precision, 5-section clinical report.
+    Output EXACTLY 5 <p> blocks with <b> headers. No other text before or after.
+    
+    <p><b> Imaging Findings</b><br>
+    Synthesize the technical observations into a professional clinical summary. 
+    Describe anatomical structures, density variations, and morphological features with clinical precision.
+    Avoid vague phrases like \"areas of interest\"—use specific terminology based on the raw data. 2-3 sentences.</p>
+    
+    <p><b> Clinical Significance</b><br>
+    Interpret the findings in a clinical context. 
+    Discuss potential diagnostic implications or anatomical correlations. 
+    Maintain professional objectivity; avoid reassurances or casual advice. 2-3 sentences.</p>
+    
+    <p><b> Specialist Recommendations</b><br>
+    Synthesize 2-3 specific clinical next steps (e.g., \"Clinical correlation with patient history required\", 
+    \"Consultation with a specialist for further evaluation\", \"Consider specific follow-up modalities\").</p>
+
+    <p><b> Precautions</b><br>
+    Based on the findings, suggest 2-3 professional clinical precautions. 
+    For example, monitoring certain symptoms or avoiding specific activities if relevant to the modality. 2-3 sentences.</p>
+    
+    <p><b> Clinical Disclaimer</b><br>
+    This evaluation was generated by an AI screening system. It is not a definitive medical diagnosis. 
+    Strict clinical correlation by a board-certified radiologist is required to confirm all findings.</p>
+    
+    STRICT CLINICAL REPORT RULES:
+    1. Return EXACTLY 5 <p> blocks with <b> headers.
+    2. Tone: Senior Radiologist (Formal, precise, objective).
+    3. Communication: Use clear, professional, plain English. Avoid overly technical jargon where possible, but do NOT use metaphors or analogies.
+    4. NO Markdown syntax (no **, no ##, no ```).
+    5. Professional yet compassionate tone."""
+
+    full_response = ""
+    try:
+        for token in stream_llm_with_fallback(prompt):
+            full_response += token
+    except Exception as e:
+        print(f"General Narrative Error: {e}")
+        full_response = f"""<p><b> Imaging Findings</b><br>
+The AI has observed: <b>{finding}</b>. A complete clinical review is required.</p>
+<p><b> Clinical Significance</b><br>
+Further evaluation by a radiologist is necessary to determine the clinical significance of these observations.</p>
+<p><b> Recommended Actions</b><br>
+Consult with your primary care physician or a specialist for a comprehensive review of this scan.</p>
+<p><b> Disclaimer</b><br>
+This is an automated screening result. It is NOT a clinical diagnosis.</p>"""
+
+    return sanitize_narrative(full_response)
+
+
+# =====================================================
+# API ROUTE: THE ANALYSIS ENGINE
+# =====================================================
+@router.post("/api/imaging/analyze")
+async def process_visual_scan(
+    file: UploadFile = File(...), 
+    scan_type: str = Form("chest"), 
+    symptoms: str = Form(None),
+    user_email: str = Depends(get_current_user)
+):
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        content = await file.read()
+        
+        # 0. Handle PDF Uploads (Convert 1st page to Image)
+        if file.filename.lower().endswith(".pdf"):
+            try:
+                from pdf2image import convert_from_bytes
+                images = convert_from_bytes(content)
+                if images:
+                    img_byte_arr = io.BytesIO()
+                    images[0].save(img_byte_arr, format='JPEG')
+                    content = img_byte_arr.getvalue()
+            except Exception as e:
+                print(f"PDF Conversion Error: {e}")
+                raise HTTPException(status_code=400, detail="Failed to process PDF scan.")
+
+        # 1. Image Validity Check (Flash Alert Logic)
+        if not resnet_engine.verify_scan_validity(content, scan_type):
+            return {
+                "status": "error",
+                "error_type": "mismatch",
+                "message": f"This does not appear to be a {scan_type} scan. Please upload the correct image type."
+            }
+
+        # 2. Vision AI (ResNet + Grad-CAM)
+        vision_result = resnet_engine.run_inference(content, scan_type=scan_type)
+
+        # Handle Inference Errors Gracefully
+        if vision_result.get("status") == "error":
+            return {
+                "status": "error",
+                "message": f"Vision Engine Error: {vision_result.get('error', 'Inference failed')}",
+                "data": vision_result # Return partial data for fallback UI if needed
+            }
+
+        # 3. RAG Knowledge (MongoDB Retriever)
+        clinical_context = rag_service.retrieve_context(vision_result['finding'], symptoms=symptoms)
+
+        # 4. LLM Narrative Generation
+        if vision_result.get("vlm_observation"):
+            # VLM gave us raw clinical observations — now transform them into patient-friendly language
+            narrative_html = generate_general_narrative(
+                vision_result["vlm_observation"],
+                vision_result["finding"]
+            )
+        else:
+            narrative_html = generate_medical_narrative(
+                vision_result['finding'], 
+                {
+                    "main": clinical_context,
+                    "secondary": ", ".join(vision_result.get('other_findings', []))
+                },
+                scan_type,
+                vision_result['specialist'],
+                vision_result.get('precautions', [])
+            )
+
+        # 5. Formulate Dashboard-Ready Response
+        analysis_result = {
+            "heatmap": vision_result['heatmap'],
+            "confidence": vision_result['confidence'], 
+            "finding": vision_result['finding'],
+            "other_findings": vision_result.get('other_findings', []),
+            "svg_id": vision_result['svg_id'],
+            "triage": vision_result['priority'],
+            "rag_explanation": clinical_context, 
+            "specialist": vision_result['specialist'],
+            "precautions": vision_result.get('precautions', []),
+            "action_plan": vision_result['action_plan'],
+            "narrative": narrative_html 
+        }
+
+        # 4. Save to History
+        db_entry = {
+            "user_email": user_email,
+            "filename": file.filename,
+            "recorded_at": datetime.utcnow(),
+            "analysis": analysis_result, # Store full result for consistent history
+            "module": "imaging"
+        }
+        imaging_collection.insert_one(db_entry)
+
+        # 5. Audit Log (Governance)
+        from services.audit_service import AuditService
+        AuditService.log_event(
+            user_email=user_email,
+            action="IMAGING_ANALYSIS_GENERATED",
+            details={
+                "scan_type": scan_type,
+                "finding": vision_result['finding'],
+                "confidence": vision_result['confidence']
+            }
+        )
+
+        return {
+            "status": "success", 
+            "data": analysis_result
+        }
+
+    except Exception as e:
+        print(f"Imaging Router Error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="The Vision Engine failed to process this scan.")
+# =====================================================
+# EXPORT ROUTE
+# =====================================================
+
+@router.post("/api/imaging/export")
+async def export_imaging_report(data: dict = Body(...)):
+    """
+    Generates a professional PDF report for the imaging analysis.
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
+    story = []
+    styles = getSampleStyleSheet()
+
+    # Extract Data early to avoid UnboundLocalError
+    finding    = data.get('finding') or 'N/A'
+    confidence = data.get('confidence') or 'N/A'
+    triage     = data.get('triage') or 'N/A'
+    specialist = data.get('specialist') or 'General Physician'
+    scan_type  = data.get('scan_type') or 'general'
+    
+    # --- Custom Styles ---
+    # Colors
+    primary_color = colors.HexColor("#0d6efd") # Bootstrap Blue
+    dark_bg = colors.HexColor("#1a1a1a")
+    light_bg = colors.HexColor("#f8f9fa")
+    
+    # Typography
+    styles.add(ParagraphStyle(name='BannerTitle', parent=styles['Heading1'], fontSize=24, textColor=colors.white, alignment=TA_CENTER, spaceAfter=20))
+    styles.add(ParagraphStyle(name='SectionHeader', parent=styles['Heading3'], fontSize=12, textColor=primary_color, spaceBefore=12, spaceAfter=6))
+    styles.add(ParagraphStyle(name='MetricsLabel', parent=styles['BodyText'], fontSize=9, textColor=colors.gray, alignment=TA_CENTER))
+    styles.add(ParagraphStyle(name='MetricsValue', parent=styles['BodyText'], fontSize=14, textColor=dark_bg, alignment=TA_CENTER, fontName="Helvetica-Bold"))
+    styles.add(ParagraphStyle(name='NarrativeHeader', parent=styles['BodyText'], fontSize=11, fontName="Helvetica-Bold", textColor=primary_color, spaceBefore=10))
+    styles.add(ParagraphStyle(name='NarrativeBody', parent=styles['BodyText'], fontSize=10, leading=14, spaceAfter=8))
+    styles.add(ParagraphStyle(name='Disclaimer', parent=styles['Italic'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER))
+
+    # --- 1. Header Banner ---
+    scan_display = str(scan_type).replace('_', ' ').upper()
+    header_content = [
+        [Paragraph("MEDIEXPLAIN INTELLIGENCE", styles['BannerTitle'])],
+        [Paragraph(f"{scan_display} ANALYSIS REPORT • {datetime.now().strftime('%Y-%m-%d %H:%M')}", 
+                   ParagraphStyle(name='BannerSub', parent=styles['Normal'], textColor=colors.whitesmoke, alignment=TA_CENTER))]
+    ]
+    banner_table = Table(header_content, colWidths=[6.5*inch])
+    banner_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), dark_bg),
+        ('TOPPADDING', (0,0), (-1,-1), 20),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 20),
+    ]))
+    story.append(banner_table)
+    story.append(Spacer(1, 25))
+
+    # --- 2. Key Metrics Grid ---
+    # Define Triage Color (Hex strings for Paragraph compatibility)
+    triage_color = "#198754" # Success Green
+    if triage in ["URGENT", "HIGH"]: triage_color = "#fd7e14" # Warning Orange
+    if triage == "EMERGENCY": triage_color = "#dc3545" # Danger Red
+
+    metrics_data = [
+        [Paragraph("DETECTED FINDING", styles['MetricsLabel']), 
+         Paragraph("AI CONFIDENCE", styles['MetricsLabel']), 
+         Paragraph("TRIAGE STATUS", styles['MetricsLabel']),
+         Paragraph("SPECIALIST", styles['MetricsLabel'])],
+        
+        [Paragraph(finding, styles['MetricsValue']), 
+         Paragraph(confidence, styles['MetricsValue']), 
+         Paragraph(f"<font color='{triage_color}'>{triage}</font>", styles['MetricsValue']),
+         Paragraph(specialist, styles['MetricsValue'])]
+    ]
+
+    metrics_table = Table(metrics_data, colWidths=[1.75*inch, 1.5*inch, 1.5*inch, 1.75*inch])
+    metrics_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), light_bg),
+        ('GRID', (0,0), (-1,-1), 1, colors.white),
+        ('TOPPADDING', (0,0), (-1,-1), 12),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(metrics_table)
+    story.append(Spacer(1, 15))
+
+    # --- 2c. Clinical Precautions ---
+    precautions = data.get('precautions', [])
+    if precautions:
+        story.append(Paragraph("Clinical Precautions", styles['SectionHeader']))
+        for p in precautions:
+            story.append(Paragraph(f"• {p}", styles['NarrativeBody']))
+        story.append(Spacer(1, 15))
+
+    # --- 2b. Visual Evidence (Heatmap) ---
+    heatmap_data = data.get('heatmap')
+    if heatmap_data and "base64," in heatmap_data:
+        try:
+            header, encoded = heatmap_data.split(",", 1)
+            img_data = base64.b64decode(encoded)
+            img_buffer = io.BytesIO(img_data)
+            
+            story.append(Paragraph("Visual Evidence (AI Heatmap Overlay)", styles['SectionHeader']))
+            # center the image
+            img = RLImage(img_buffer, width=3.5*inch, height=3.5*inch)
+            img.hAlign = 'CENTER'
+            story.append(img)
+            # Create a centered style for the caption
+            caption_style = ParagraphStyle(name='Caption', parent=styles['Normal'], fontSize=8, textColor=colors.gray, alignment=TA_CENTER)
+            story.append(Paragraph("Figure 1: Class Activation Map (CAM) showing localized diagnostic focus", caption_style))
+            story.append(Spacer(1, 15))
+        except Exception as img_err:
+            print(f"Heatmap PDF Embedding Error: {img_err}")
+
+    # --- 3. Analysis Narrative ---
+    story.append(Paragraph("AI Clinical Narrative", styles['SectionHeader']))
+    story.append(Paragraph("<font size=9 color='gray'>Generated by Expert Radiologist AI Model (Temperature 0.2)</font>", styles['Normal']))
+    story.append(Spacer(1, 10))
+
+    narrative_html = data.get('narrative') or ''
+    
+    # Advanced Parsing using Regex to reconstruct the structure correctly for ReportLab
+    # Expected format: <p><b>Header</b><br>Content</p>
+    
+    # 1. Standardize and clean narrative
+    clean_html = narrative_html.replace('<div class="clinical-narrative">', '').replace('</div>', '')
+    clean_html = clean_html.replace('<br>', '<br/>').replace('<br >', '<br/>')
+    
+    # 2. Extract sections
+    sections = re.findall(r'<p>(.*?)</p>', clean_html, re.DOTALL)
+    
+    for section in sections:
+        # Check for headers in <b> or <strong>
+        header_match = re.search(r'<(?:b|strong)>(.*?)</(?:b|strong)>', section)
+        if header_match:
+            header_text = header_match.group(1).replace(":", "").strip()
+            story.append(Paragraph(header_text, styles['NarrativeHeader']))
+            
+            # Extract content after the header or <br/>
+            content = re.sub(r'<(?:b|strong)>.*?</(?:b|strong)>', '', section)
+            content = content.replace('<br/>', '').strip()
+            if content:
+                story.append(Paragraph(content, styles['NarrativeBody']))
+        else:
+            # Check for list items if this section contains them
+            if '<li>' in section:
+                items = re.findall(r'<li>(.*?)</li>', section, re.DOTALL)
+                for item in items:
+                    story.append(Paragraph(f"• {item.strip()}", styles['NarrativeBody']))
+            elif section.strip():
+                # Regular paragraph
+                story.append(Paragraph(section.strip(), styles['NarrativeBody']))
+
+    story.append(Spacer(1, 30))
+
+    # --- 4. Footer & Disclaimer ---
+    # Divider Line
+    story.append(Table([[""]], colWidths=[6.5*inch], style=TableStyle([('LINEABOVE', (0,0), (-1,-1), 1, colors.lightgrey)])))
+    story.append(Spacer(1, 10))
+    
+    disclaimer_text = (
+        "<b>DISCLAIMER:</b> This report is generated by an AI system (MediExplain) and is intended for educational and "
+        "demonstration purposes only. It is <u>NOT</u> a medical diagnosis. "
+        "Always consult a qualified healthcare provider for clinical decision-making."
+    )
+    story.append(Paragraph(disclaimer_text, styles['Disclaimer']))
+    story.append(Spacer(1, 5))
+    story.append(Paragraph("© 2026 MediExplain Intelligence • Confidential & Proprietary", styles['Disclaimer']))
+
+    try:
+        doc.build(story)
+        buffer.seek(0)
+        safe_scan = str(scan_type).replace(' ', '_').replace('/', '-')
+        filename = f"MediExplain_Imaging_{safe_scan}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        print(f"Imaging Export Route Error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 
-from app.core.config import users_collection
-from app.core.security import hash_password
-from app.core.dependencies import get_current_user, is_admin_by_email
-from app.main import templates
+from core.config import users_collection
+from core.security import hash_password
+from core.dependencies import get_current_user, is_admin_by_email
+from core.templates import templates
 
 
 # =====================================================
@@ -42,7 +42,7 @@ async def profile_page(
         "request": request,
         "user": user,
         "active_page": "profile",
-        "is_admin": is_admin_by_email(user_email),
+        "is_admin": await is_admin_by_email(user_email),
         "flash": flash,
     }
 

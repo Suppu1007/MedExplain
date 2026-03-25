@@ -8,6 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------
@@ -20,7 +21,7 @@ RUN pip install --no-cache-dir \
 # -----------------------------
 # Install remaining Python deps
 # -----------------------------
-COPY app/requirements.txt ./requirements.txt
+COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir \
     sentence-transformers \
     scikit-learn \
@@ -30,13 +31,14 @@ RUN pip install --no-cache-dir \
 # -----------------------------
 # Copy application code
 # -----------------------------
-COPY app/ ./app
+COPY backend/ ./
+COPY backend/requirements.txt .
 
 WORKDIR /app
 
-EXPOSE 8009
+EXPOSE 1007
 
 # -----------------------------
 # Start FastAPI
 # -----------------------------
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8009"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "1007"]

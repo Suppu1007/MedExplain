@@ -1,5 +1,5 @@
 # If you want separate token file — but using security.py is enough
-from app.core.security import create_access_token, decode_token
+from core.security import create_access_token, decode_token
 from datetime import datetime, timedelta
 from jose import jwt
 import os

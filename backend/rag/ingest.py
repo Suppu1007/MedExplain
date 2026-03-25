@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 # ===============================
 # CONTAINER-SAFE PATHS
 # ===============================
-BASE_DATA_PATH = "/app/data"
+BASE_DATA_PATH = "/app/app/data"
 BIOASQ_PATH = os.path.join(BASE_DATA_PATH, "bioasq")
 MEDQUAD_PATH = os.path.join(BASE_DATA_PATH, "medquad", "medDataset_processed.csv")
 OUTPUT_PATH = os.path.join(BASE_DATA_PATH, "embeddings.json")
@@ -45,7 +45,7 @@ def load_bioasq():
             except Exception:
                 continue
 
-    print(f"✅ BioASQ loaded: {len(docs)}")
+    print(f"BioASQ loaded: {len(docs)}")
     return docs
 
 
@@ -56,15 +56,15 @@ def load_medquad():
     docs = []
     idx = 0
 
-    print("📄 MedQuAD path:", MEDQUAD_PATH)
-    print("📄 Exists:", os.path.exists(MEDQUAD_PATH))
+    print("MedQuAD path:", MEDQUAD_PATH)
+    print("Exists:", os.path.exists(MEDQUAD_PATH))
 
     with open(MEDQUAD_PATH, encoding="utf-8", errors="ignore") as f:
         reader = csv.reader(f)
         rows = list(reader)
 
     headers = [h.lower() for h in rows[0]]
-    print("📄 Headers:", headers)
+    print("Headers:", headers)
 
     q_idx = headers.index("question")
     a_idx = headers.index("answer")
@@ -80,7 +80,7 @@ def load_medquad():
             })
             idx += 1
 
-    print(f"✅ MedQuAD loaded: {len(docs)}")
+    print(f"MedQuAD loaded: {len(docs)}")
     return docs
 
 
@@ -92,7 +92,7 @@ def main():
     documents.extend(load_bioasq())
     documents.extend(load_medquad())
 
-    print(f"📚 Total documents: {len(documents)}")
+    print(f"Total documents: {len(documents)}")
 
     model = SentenceTransformer(EMBED_MODEL)
     embeddings = model.encode(
@@ -106,7 +106,7 @@ def main():
             "embeddings": embeddings.tolist()
         }, f)
 
-    print(f"✅ embeddings.json created at {OUTPUT_PATH}")
+    print(f"embeddings.json created at {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

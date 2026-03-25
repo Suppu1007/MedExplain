@@ -8,7 +8,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 # CONFIG
 # ===============================
 EMBED_MODEL = "all-MiniLM-L6-v2"
-EMBEDDINGS_PATH = "/app/data/embeddings.json"
+EMBEDDINGS_PATH = "/app/app/data/embeddings.json"
+if not os.path.exists(EMBEDDINGS_PATH):
+    EMBEDDINGS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "embeddings.json")
 
 _model = None
 _documents = None
@@ -23,7 +25,7 @@ def _load_store():
 
     if not os.path.exists(EMBEDDINGS_PATH):
         raise RuntimeError(
-            "❌ embeddings.json not found. "
+            "embeddings.json not found. "
             "Run: python -m app.rag.ingest"
         )
 
@@ -34,7 +36,7 @@ def _load_store():
     _embeddings = np.array(store["embeddings"])
     _model = SentenceTransformer(EMBED_MODEL)
 
-    print("✅ RAG store loaded")
+    print("RAG store loaded")
 
 
 # ===============================

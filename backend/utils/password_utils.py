@@ -1,1 +1,1 @@
-from app.core.security import hash_password, verify_password
+from core.security import hash_password, verify_password

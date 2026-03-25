@@ -4,13 +4,13 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from datetime import datetime
 
-from app.core.config import (
+from core.config import (
     users_collection,
     reports_collection,
-    conversations_collection,
+    reports_collection,
 )
-from app.core.dependencies import get_current_user, is_admin
-from app.main import templates
+from core.dependencies import get_current_user, is_admin
+from core.templates import templates
 
 
 # =====================================================
@@ -37,7 +37,7 @@ async def home(
     """
     flash = request.cookies.get("flash")
     user = users_collection.find_one({"email": user_email})
-    is_admin_user = is_admin(user_email)
+    is_admin_user = await is_admin(user_email)
 
     context = {
         "request": request,
@@ -45,6 +45,9 @@ async def home(
         "active_page": "home",
         "is_admin": is_admin_user,
         "flash": flash,
+        "flash": flash,
+        # "hide_sidebar": True,  # Full width layout - REMOVED to show navbar
+
     }
 
     resp = templates.TemplateResponse("home.html", context)
@@ -69,7 +72,7 @@ async def dashboard(
 
     flash = request.cookies.get("flash")
     user = users_collection.find_one({"email": user_email})
-    is_admin_user = is_admin(user_email)
+    is_admin_user = await is_admin(user_email)
 
     # ---------------- ADMIN METRICS ----------------
     if is_admin_user:
@@ -80,7 +83,9 @@ async def dashboard(
         active_users = users_collection.count_documents(
             {"status": "Active"}
         )
-        assistant_queries = conversations_collection.count_documents({})
+        active_users = users_collection.count_documents(
+            {"status": "Active"}
+        )
 
         recent_activity = list(
             reports_collection
@@ -97,7 +102,6 @@ async def dashboard(
             "total_reports": total_reports,
             "analyzed_reports": analyzed_reports,
             "active_users": active_users,
-            "assistant_queries": assistant_queries,
             "recent_activity": recent_activity,
             "flash": flash,
         }
@@ -147,7 +151,7 @@ async def dashboard_summary(
     Lightweight JSON summary.
     Useful for charts / async UI widgets.
     """
-    is_admin_user = is_admin(user_email)
+    is_admin_user = await is_admin(user_email)
 
     if is_admin_user:
         return {
@@ -159,7 +163,6 @@ async def dashboard_summary(
             "active_users": users_collection.count_documents(
                 {"status": "Active"}
             ),
-            "assistant_queries": conversations_collection.count_documents({}),
         }
 
     user_reports = list(
@@ -181,21 +184,10 @@ async def dashboard_summary(
 # =====================================================
 # AI ASSISTANT UI
 # =====================================================
-@ui_router.get("/assistant", response_class=HTMLResponse, include_in_schema=False)
-async def assistant_page(
-    request: Request,
-    user_email: str = Depends(get_current_user),
-):
+@ui_router.get("/assistant", include_in_schema=False)
+async def assistant_page(request: Request):
     """
-    AI Medical Assistant chat interface.
-    Accessible to logged-in users only.
+    Deprecated: Assistant is now embedded in Home.
+    Redirecting to Home.
     """
-
-    return templates.TemplateResponse(
-        "assistant.html",
-        {
-            "request": request,
-            "active_page": "assistant",
-            "is_admin": is_admin(user_email),
-        }
-    )
+    return RedirectResponse("/home", status_code=303)
