@@ -1,18 +1,19 @@
-from fastapi import APIRouter, Body, Depends, UploadFile, File, HTTPException, Request
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 from bson import ObjectId
 from datetime import datetime
 import traceback
 
 # Local imports
-from db.mongo import lab_results_collection
-from core.dependencies import get_current_user, is_admin
-from services.pdf_service import PDFService
-from modules.lab_analysis.analyzer import LabAnalyzer
-from modules.lab_analysis.ai_interpretation import generate_interpretation
+from app.db.mongo import lab_results_collection
+from app.core.dependencies import get_current_user
+from app.services.pdf_service import PDFService
+from app.modules.lab_analysis.analyzer import LabAnalyzer
+from app.modules.lab_analysis.ai_interpretation import generate_interpretation
 
 router = APIRouter(tags=["Lab Analysis"])
-from core.templates import templates
+templates = Jinja2Templates(directory="app/frontend/templates")
 
 # =====================================================
 # UI ROUTE: DASHBOARD
@@ -30,8 +31,7 @@ async def get_labs_dashboard(request: Request, user_email: str = Depends(get_cur
     return templates.TemplateResponse("analysis.html", {
         "request": request,
         "active_page": "labs",
-        "user_email": user_email,
-        "is_admin": await is_admin(user_email)
+        "user_email": user_email
     })
 
 # =====================================================
@@ -44,57 +44,57 @@ async def perform_full_analysis(
     user_email: str = Depends(get_current_user)
 ):
     """
-    Real-time Streaming Endpoint:
-    Yields JSON chunks for markers and narrative as they generate.
+    End-to-End Processing:
+    1. OCR (PDF/Image to Text)
+    2. Model Synthesis (JSON for visual map + Narrative Text)
+    3. Storage (MongoDB)
     """
-    from fastapi.responses import StreamingResponse
-    import json
+    try:
+        # 1. Validation
+        if not file.filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+            raise HTTPException(status_code=400, detail="Invalid file format. Use PDF or Image.")
 
-    async def stream_analysis():
-        try:
-            # 1. Validation & Extraction
-            content = await file.read()
-            raw_text = PDFService.extract_text(content, file.filename)
-            
-            if not raw_text or len(raw_text.strip()) < 10:
-                yield json.dumps({"status": "error", "message": "Document unreadable."}) + "\n"
-                return
+        # 2. Extract raw text via PDFService (Handles Images & PDFs)
+        content = await file.read()
+        raw_text = PDFService.extract_text(content, file.filename)
+        
+        if not raw_text or len(raw_text.strip()) < 10:
+            raise HTTPException(status_code=400, detail="Document content is unreadable.")
 
-            full_structured = None
-            full_narrative = ""
+        # 3. Model Synthesis via LabAnalyzer
+        # Returns: {"structured": {...}, "narrative": "..."}
+        result = LabAnalyzer.process_report(raw_text)
+        
+        if not result["structured"]:
+            raise HTTPException(status_code=422, detail="AI failed to extract structured clinical markers.")
 
-            # 2. Call the generator
-            async for chunk in LabAnalyzer.process_report(raw_text):
-                if chunk["type"] == "error":
-                    yield json.dumps({"status": "error", "message": chunk["message"]}) + "\n"
-                    return
-                
-                if chunk["type"] == "structured":
-                    full_structured = chunk["data"]
-                    yield json.dumps({"status": "structured", "data": full_structured}) + "\n"
-                
-                if chunk["type"] == "narrative_chunk":
-                    full_narrative += chunk["data"]
-                    yield json.dumps({"status": "narrative_chunk", "data": chunk["data"]}) + "\n"
-                
-                if chunk["type"] == "done":
-                    # 3. Persistent Storage at the end
-                    db_record = {
-                        "user_email": user_email,
-                        "filename": file.filename,
-                        "recorded_at": datetime.utcnow(),
-                        "structured_metrics": full_structured,
-                        "human_narrative": full_narrative,
-                        "global_confidence": full_structured.get("global_confidence", "95.0%")
-                    }
-                    lab_results_collection.insert_one(db_record)
-                    yield json.dumps({"status": "done"}) + "\n"
+        # 4. Persistent Storage (The Record)
+        db_record = {
+            "user_email": user_email,
+            "filename": file.filename,
+            "recorded_at": datetime.utcnow(),
+            "structured_metrics": result["structured"], # For the Body Map & Table
+            "human_narrative": result["narrative"]      # For the Textual Explanation
+        }
+        
+        lab_results_collection.insert_one(db_record)
 
-        except Exception as e:
-            yield json.dumps({"status": "error", "message": str(e)}) + "\n"
+        # 5. Return JSON to Frontend
+        # We convert datetime for the response
+        return {
+            "status": "success",
+            "data": {
+                "structured_metrics": result["structured"],
+                "human_narrative": result["narrative"],
+                "filename": file.filename
+            }
+        }
 
-    return StreamingResponse(stream_analysis(), media_type="application/x-ndjson")
-
+    except Exception as e:
+        print(f"❌ Analysis Endpoint Error: {e}")
+        traceback.print_exc()
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail="Internal processing error.")
 
 # =====================================================
 # API ROUTE: FETCH RESULTS
@@ -120,7 +120,7 @@ def get_user_results(user_email: str = Depends(get_current_user)):
             })
         return results
     except Exception as e:
-        print(f"Results Fetch Error: {e}")
+        print(f"❌ Results Fetch Error: {e}")
         return []
 
 # =====================================================
@@ -155,11 +155,11 @@ def get_standalone_interpretation(lab_id: str, user_email: str = Depends(get_cur
 
 
 from fastapi import Response
-from services.export_service import ExportService
+from app.services.export_service import ExportService
 
 @router.post("/api/labs/export")
 async def export_lab_report(
-    payload: dict = Body(...),  # Receives the current analysis object
+    payload: dict, # Receives the current analysis object
     user_email: str = Depends(get_current_user)
 ):
     """

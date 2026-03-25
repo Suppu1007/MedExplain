@@ -1,147 +1,277 @@
 {% extends "base.html" %}
-{% block title %}Profile — MedExplain{% endblock %}
+{% block title %}Profile — MediExplain{% endblock %}
 {% block content %}
 
-<!-- ================= PROFILE CARD ================= -->
-<div class="glass-container p-4 p-md-5 mx-auto fade-in-up"
-     style="max-width:760px; margin-top:40px; margin-bottom:40px;">
-
-  <!-- Header -->
-  <div class="d-flex align-items-center gap-3 mb-4">
-    <span class="material-icons"
-          style="font-size:56px;color:var(--med-primary);">
-      account_circle
-    </span>
-    <div>
-      <h4 class="fw-bold mb-0" style="color:var(--med-primary);">
-        {{ user.name }}
-      </h4>
-      <small class="text-muted">{{ user.email }}</small>
-    </div>
-  </div>
-
-  {% if flash %}
-  <div class="alert alert-info text-center fw-semibold rounded-3 mb-3 fade-in-up">
-    {{ flash }}
-  </div>
-  {% endif %}
-
-  <!-- ================= PROFILE FORM ================= -->
-  <form method="POST" class="row g-4">
-
-    <!-- Full Name -->
-    <div class="col-12">
-      <label class="form-label fw-semibold">
-        <span class="material-icons fs-6 me-1 align-middle">badge</span>
-        Full Name
-      </label>
-      <input
-        name="fullname"
-        value="{{ user.name }}"
-        class="form-control input-custom"
-        required
-      >
-    </div>
-
-    <!-- Email (Read-only) -->
-    <div class="col-12">
-      <label class="form-label fw-semibold">
-        <span class="material-icons fs-6 me-1 align-middle">mail</span>
-        Email Address
-      </label>
-      <input
-        value="{{ user.email }}"
-        class="form-control input-custom"
-        disabled
-      >
-    </div>
-
-    <!-- Role (Read-only) -->
-    <div class="col-12">
-      <label class="form-label fw-semibold">
-        <span class="material-icons fs-6 me-1 align-middle">verified_user</span>
-        Access Role
-      </label>
-      <input
-        value="{{ user.role }}"
-        class="form-control input-custom"
-        disabled
-      >
-    </div>
-
-    <!-- Password Change -->
-    <div class="col-12">
-      <label class="form-label fw-semibold">
-        <span class="material-icons fs-6 me-1 align-middle">lock_reset</span>
-        New Password <small class="text-muted">(optional)</small>
-      </label>
-      <input
-        name="new_password"
-        type="password"
-        class="form-control input-custom"
-        placeholder="Leave blank to keep current password"
-      >
-    </div>
-
-    <!-- Disclaimer -->
-    <div class="col-12">
-      <div class="alert alert-warning small mb-0">
-        🔐 For security reasons, password updates follow strict validation rules.
+<!-- ================= PROFILE CONTAINER ================= -->
+<div class="profile-layout fade-in-up">
+  <div class="glass-card profile-card">
+    
+    <!-- Header -->
+    <div class="profile-header">
+      <div class="avatar-large">
+        <span class="material-icons">account_circle</span>
+      </div>
+      <div class="header-text">
+        <h3 class="fw-bold mb-1">{{ user.name }}</h3>
+        <p class="text-muted mb-0">{{ user.email }}</p>
       </div>
     </div>
 
-    <!-- Submit -->
-    <div class="col-12 mt-2">
-      <button class="submit-btn w-100 py-3 fw-bold rounded-3">
-        Update Profile
-      </button>
+    {% if flash %}
+    <div class="alert alert-custom mb-4">
+      <span class="material-icons fs-6 me-2">info</span>
+      {{ flash }}
     </div>
+    {% endif %}
 
-  </form>
+    <!-- ================= PROFILE FORM ================= -->
+    <form method="POST" class="profile-form">
 
+      <div class="form-row">
+        <!-- Full Name -->
+        <div class="form-group">
+          <label class="form-label">
+            <span class="material-icons">badge</span> Full Name
+          </label>
+          <input
+            name="fullname"
+            value="{{ user.name }}"
+            class="form-control input-custom"
+            required
+          >
+        </div>
+
+        <!-- Email (Read-only) -->
+        <div class="form-group">
+          <label class="form-label">
+            <span class="material-icons">mail</span> Email Address
+          </label>
+          <input
+            value="{{ user.email }}"
+            class="form-control input-custom"
+            disabled
+          >
+          <small class="field-note">Email cannot be changed.</small>
+        </div>
+
+        <!-- Role (Read-only) -->
+        <div class="form-group">
+          <label class="form-label">
+            <span class="material-icons">verified_user</span> Access Role
+          </label>
+          <div class="role-badge">
+            {{ user.role }}
+          </div>
+        </div>
+
+        <!-- Password Change -->
+        <div class="form-group">
+          <label class="form-label">
+            <span class="material-icons">lock_reset</span> New Password
+          </label>
+          <input
+            name="new_password"
+            type="password"
+            class="form-control input-custom"
+            placeholder="Leave blank to keep current password"
+          >
+        </div>
+      </div>
+
+      <!-- Security Notice -->
+      <div class="security-notice">
+        <span class="material-icons">security</span>
+        Password updates follow strict clinical-grade validation rules.
+      </div>
+
+      <!-- Submit -->
+      <div class="form-actions">
+        <button type="submit" class="submit-btn">
+          Update Profile Information
+        </button>
+      </div>
+
+    </form>
+  </div>
 </div>
 
 <!-- ================= STYLES ================= -->
 <style>
-.glass-container {
-  background: rgba(255,255,255,0.55);
-  border-radius: 20px;
-  border: 1px solid rgba(30,58,95,0.18);
-  box-shadow: 0 18px 45px rgba(30,58,95,0.18);
+/* Layout */
+.profile-layout {
+  max-width: 720px;
+  margin: 20px auto 60px;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: var(--shadow);
+}
+
+/* Header */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--border);
+}
+
+.avatar-large {
+  width: 80px;
+  height: 80px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-large .material-icons {
+  font-size: 50px;
+  color: var(--text);
+}
+
+/* Form Styling */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.form-label .material-icons {
+  font-size: 18px;
+  color: var(--muted);
 }
 
 /* Inputs */
 .input-custom {
-  padding: 14px;
-  background: rgba(255,255,255,0.9);
-  border: 1px solid rgba(30,58,95,0.25);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 12px 16px;
   border-radius: 12px;
-}
-.input-custom:focus {
-  border-color: var(--med-primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+  font-size: 15px;
+  transition: 0.2s;
 }
 
-/* Button */
-.submit-btn {
-  background: var(--med-primary);
-  color: #fff;
-  transition: .25s ease;
-  border: none;
+.input-custom:focus {
+  background: var(--bg);
+  border-color: var(--text);
+  box-shadow: 0 0 0 4px rgba(0,0,0,0.05);
+  color: var(--text);
 }
+
+.input-custom:disabled {
+  background: rgba(0,0,0,0.03);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+body.dark .input-custom:disabled {
+  background: rgba(255,255,255,0.03);
+}
+
+.field-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Role Badge */
+.role-badge {
+  display: inline-flex;
+  padding: 8px 16px;
+  background: var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  width: fit-content;
+  text-transform: capitalize;
+}
+
+/* Security Notice */
+.security-notice {
+  background: rgba(255, 193, 7, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 13px;
+  color: #856404;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+body.dark .security-notice {
+  color: #ffe69c;
+}
+
+/* Submit Button */
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 15px;
+  transition: 0.3s;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
 .submit-btn:hover {
-  background: #1e40af;
+  opacity: 0.9;
   transform: translateY(-2px);
 }
 
-/* Animation */
-.fade-in-up {
-  animation: fadeSlide .45s ease-out;
+/* Alerts */
+.alert-custom {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
 }
-@keyframes fadeSlide {
-  from { opacity:0; transform:translateY(15px); }
-  to { opacity:1; transform:translateY(0); }
+
+/* Animations */
+.fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .glass-card { padding: 25px; }
+  .profile-header { flex-direction: column; text-align: center; }
 }
 </style>
 

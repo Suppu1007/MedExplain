@@ -1,0 +1,55 @@
+<html>
+<head>
+    <style>
+        @page { size: a4 portrait; margin: 2cm; }
+        body { font-family: Helvetica, Arial, sans-serif; color: #333; }
+        .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .title { font-size: 22px; font-weight: bold; }
+        .meta { font-size: 10px; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: #000; color: #fff; padding: 8px; text-align: left; font-size: 12px; }
+        td { border-bottom: 1px solid #eee; padding: 8px; font-size: 11px; }
+        .critical { color: red; font-weight: bold; }
+        .section-title { font-size: 14px; font-weight: bold; margin-top: 30px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">MediExplain Clinical Report</div>
+        <div class="meta">Patient: {{ user_email }} | Date: 2026-01-12</div>
+    </div>
+
+    <div class="section-title">BIOMARKER SUMMARY</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Test Name</th>
+                <th>Result</th>
+                <th>Status</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in analysis.markers %}
+            <tr>
+                <td>{{ m.name }}</td>
+                <td>{{ m.value }} {{ m.unit }}</td>
+                <td class="{{ 'critical' if m.status != 'normal' else '' }}">{{ m.status|upper }}</td>
+                <td>{{ m.category }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="section-title">CLINICAL NARRATIVE</div>
+    <p style="font-size: 12px; line-height: 1.5;">{{ narrative }}</p>
+
+    <div class="section-title">RECOMMENDATIONS</div>
+    <p><b>Consult:</b> {{ analysis.triage.specialist }}</p>
+    <ul>
+        {% for p in analysis.precautions %}
+        <li>{{ p }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

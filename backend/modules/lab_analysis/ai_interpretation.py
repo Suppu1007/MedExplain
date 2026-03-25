@@ -1,4 +1,4 @@
-from services.llm_router import stream_llm_with_fallback
+from app.services.llm_router import stream_llm_with_fallback
 
 def classify_lab_value(value, ref_min, ref_max):
     """
@@ -50,7 +50,6 @@ GUIDELINES:
 3. CLARITY: Explain the medical term in 1 sentence.
 4. ACTIONABLE ADVICE: Suggest specific questions they should ask their doctor regarding this result.
 5. CONCISE: Keep the entire response under 150 words.
-6. NO MARKDOWN: DO NOT use bolding (**) or bullet points (*). Use plain text only.
 
 Explain what this result means and its general clinical significance.
 """
@@ -70,7 +69,7 @@ def generate_interpretation(lab_data: dict) -> str:
             explanation_text += token
             
     except Exception as e:
-        print(f"LLM Interpretation Error: {e}")
+        print(f"❌ LLM Interpretation Error: {e}")
         return "MediExplain is currently unable to synthesize an explanation for this result. Please consult your healthcare provider."
 
     return explanation_text.strip()
