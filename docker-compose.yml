@@ -1,20 +1,19 @@
 services:
-
-  # =========================
   # OLLAMA LLM SERVICE
-  # =========================
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
     environment:
       OLLAMA_NUM_PARALLEL: 1
       OLLAMA_MAX_LOADED_MODELS: 1
+    ports:
+      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
   # =========================
-  # QDRANT VECTOR DATABASE (For Medical RAG)
+  # QDRANT VECTOR DATABASE
   # =========================
   qdrant:
     image: qdrant/qdrant:latest
@@ -32,28 +31,32 @@ services:
   app:
     build:
       context: .
-      dockerfile: app/Dockerfile
-    container_name: app
+      dockerfile: backend/Dockerfile
+    container_name: medexplain_app
     env_file:
       - .env
     environment:
-      - OLLAMA_HOST=http://ollama:11434
-      - OLLAMA_MODEL=llama3.2:1b
-      - QDRANT_URL=http://qdrant:6333  # <--- Essential for rag_service.py
+      - OLLAMA_BASE_URL=http://ollama:11434
     ports:
-      - "8009:8009"
+      - "1007:1007"
     depends_on:
       - ollama
-      - qdrant  # <--- Ensures Qdrant starts before the app
+      - qdrant
+
     volumes:
-      - ./app/data:/app/data
-      - ./medical_library:/app/medical_library # <--- Mounts your PDF folder
+      - ./backend:/app
+      - ./frontend:/frontend
+      - ./ml:/ml
+      - ./medical_library:/medical_library
     restart: unless-stopped
     command: >
-      uvicorn app.main:app
+      uvicorn main:app
       --host 0.0.0.0
-      --port 8009
+      --port 1007
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
 volumes:
   ollama_data:
-  qdrant_data: # <--- Keeps your indexed textbooks safe on disk
+  qdrant_data:
